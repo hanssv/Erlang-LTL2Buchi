@@ -24,17 +24,24 @@
 %% OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 %% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-%%% File    : ltl2buchi.erl
-%%% Author  : Hans Svensson <>
-%%% Description : LTL to Büchi translation in the spirit of LTL2BUCHI
-%%%               (Java - NASA - Giannakopoulou & Lerda)
-%%% Created :  5 Mar 2009 by Hans Svensson <>
+
+%% @author Hans Svensson <hanssv@chalmers.se>
+%% @copyright 2009, Hans Svensson
+%% @doc LTL-to-Buchi translation.
+%% The core translation algorithm implemented in this module is described
+%% in the report
+%% <a href="http://ti.arc.nasa.gov/m/profile/dimitra/publications/forte02.pdf">
+%% From States to Transitions: Improving translation of
+%% LTL formulae to Buchi automata</a> by Giannakopoulou and Lerda.
+%%
+%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
+%% @todo Use digraphs for representing Buchi automata.
 
 -module(ltl2buchi).
 
--export([convert/1,translate/1,translate_norew/1]).
+-export([translate/1,translate_norew/1]).
 -export([simplify/1]).
--export([permutations/1,selections/1]).
+-export([permutations/1, selections/1]).
 
 -record(node,{nodeid,
 			  incoming = [],
@@ -47,17 +54,16 @@
 
 -define(DEBUG,0).
 
-convert(Phi) ->
-%% 	B = translate(fix_ltl_format(Phi)),
- 	_B = translate(Phi).
-%% 	buchi_to_mcerlang_digraph(B).
-
+%% @doc Translate an LTL expression to a Buchi automaton.
+%% @spec (ltl_formula()) -> buchi_automaton()
 translate(Phi) ->
 	RPhi = ltl_rewrite:rewrite(Phi),
-	Bs = ltl2buchi(RPhi),
-	OptBs = lists:map(fun buchi_reduce:reduce/1,Bs),
-	_OptB = pick_smallest(OptBs).
+	translate_norew(RPhi).
 
+%% @doc Translate an LTL expression to a Buchi automaton.
+%% Does not use the rewrite heuristics in {@link ltl_rewrite}.
+%% @see translate/1.
+%% @spec (ltl_formula()) -> buchi_automaton()
 translate_norew(Phi) ->
 	Bs = ltl2buchi(Phi),
 	OptBs = lists:map(fun buchi_reduce:reduce/1,Bs),
@@ -65,54 +71,19 @@ translate_norew(Phi) ->
 
 %%% Pick the best!
 pick_smallest(Bs) ->
-	hd(lists:sort(fun(B1,B2) ->
-						  buchi_reduce:size_of(B1) < buchi_reduce:size_of(B2)
-				  end,Bs)).
-
-
-%%%
-%% Convert tuple-based Buchi automata to digraph 
-%% variant defined in buchi.erl
-%%% 
-%% buchi_to_mcerlang_digraph({States,InitStates,Trans,Accept}) ->
-%% 	G = buchi:new(),
-%% 	lists:foreach(
-%% 	  fun(S) ->
-%% 			  buchi:add_state(S-1,
-%% 							  [initial   || lists:member(S,InitStates)] ++
-%% 							  [accepting || lists:member(S,Accept)],
-%% 							  G)
-%% 	  end,States),
-%% 	lists:foreach(
-%% 	  fun({S1,S2,Lbl}) ->
-%% 			  buchi:add_transition(S1-1,
-%% 								   convert_label(Lbl),
-%% 								   S2-1,
-%% 								   G)
-%% 	  end,Trans),
-%% 	G.
-
-%% convert_label([]) ->
-%% 	buchi:boolean_condition(true);
-%% convert_label([X]) ->
-%% 	convert_literal(X);
-%% convert_label([X | Xs]) ->
-%% 	buchi:and_condition(convert_literal(X),convert_label(Xs)).
-
-%% convert_literal({lnot,P}) ->
-%% 	buchi:neg_condition(convert_literal(P));
-%% convert_literal(ltrue) ->
-%% 	buchi:pred_condition(true);
-%% convert_literal(lfalse) ->
-%% 	buchi:pred_condition(false);
-%% convert_literal({lprop,X}) ->
-%% 	buchi:pred_condition(X).
+	hd(lists:sort(
+		 fun(B1,B2) ->
+				 buchi_reduce:size_of(B1) < buchi_reduce:size_of(B2)
+		 end,Bs)).
 
 %%%
 %% Core translation
 %%%
 
-%% Remove always, eventually
+%% @doc Simplify an LTL expression.
+%% Removes always- and eventually-expressions and replace them
+%% with their <em>release</em> and <em>until</em> equivalences.
+%% @spec (ltl_formula()) -> ltl_formula()
 simplify({always,Phi}) ->
 	simplify({release,lfalse,Phi});
 simplify({eventually,Phi}) ->
@@ -419,22 +390,6 @@ degeneralize_tgba(_States,_InitState,[]) ->
 	[{[],[],[],[]}];
 degeneralize_tgba(States,InitState,Trans) ->
 	NbrAccSets = length(lists:usort([ A || {_,_,_,As} <- Trans, A <- As])),
-%%  	{DS2,DTrs2,DAc2} = build_degen(NbrAccSets),
-%%   	{DS,DTrs,DAc} = {[0,1,2],[{0,0,[0,1]},{0,1,[]},{0,2,[0]},
-%%   							  {1,0,[0,1]},{1,1,[]},{1,2,[0]},
-%%   							  {2,2,[]},{2,0,[1]}],[0]},
-%% 	{SS,TS,IS} = {[0,1,2],[{0,0,[],[1]},{0,1,[a],[0,1]},{0,2,[],[0]},{0,2,[a],[0,1]},
-%% 						   {1,1,[],[0,1]},
-%% 						   {2,2,[],[0]},{2,2,[a],[0,1]}],[0]},
-%%  	prt_debug("Degen automata:\n   ~p\n",[{DS,[0],DTrs,DAc}]),
-%%  	prt_debug("Bs: ~p\n",[synch_product({DS,[0],DTrs,DAc},{SS,IS,TS})]),
-
-%%  	prt_debug("Degen automata:\n   ~p\n",[permute_ac([0,1],[1,0],{DS,[0],DTrs,DAc})]),
-%%  	prt_debug("Bs: ~p\n",[synch_product(permute_ac([0,1],[1,0],{DS,[0],DTrs,DAc}),{SS,IS,TS})]),
-
-
-%%  	prt_debug("Auto Degen automata:\n   ~p\n",[{DS2,DTrs2,DAc2}]),
-
 	Gens =
 		case NbrAccSets < 2 of
 			true ->
@@ -452,21 +407,8 @@ degeneralize_tgba(States,InitState,Trans) ->
 %%  				   || P <- permutations(lists:seq(1,NbrAccSets)) ] ++
  				 [ permute_ac(lists:seq(1,NbrAccSets),P,{DS_,[NbrAccSets+1],DTrs_,DAc_}) 
  				   || P <- permutations(lists:seq(1,NbrAccSets)) ]
-%%  					 ++ 
-%% 					 [{[1,2,3],[1],[{1,1,[1,2]},{1,3,[1]},{1,2,[]},
-%% 									   {2,1,[1,2]},{2,3,[1]},{2,2,[]},
-%% 									   {3,1,[2]},{3,3,[]}],[1]}]
 		end,
 
-
-
-%% 	B1 = buchi_reduce:remove_unnecessary_trans(synch_product({DS,[1],DTrs,DAc},{States,InitState,Trans})),
-%%   	B2 = buchi_reduce:remove_unnecessary_trans(synch_product({DS,[NbrAccSets+1],DTrs,DAc},{States,InitState,Trans})),
-%% 	Perms = permutations(DS2),
-%% 	Degs = [ permute(DS2,Ps,{DS2,[1],DTrs2,DAc2}) || Ps <- Perms ] ++
-%% 		[ permute(DS2,Ps,{DS2,[2],DTrs2,DAc2}) || Ps <- Perms ] ++
-%% 		[ permute(DS2,Ps,{DS2,[NbrAccSets+1],DTrs2,DAc2}) || Ps <- Perms ],
-%% 	Degs = [ permute(DS2,Ps,{DS2,[NbrAccSets+1],DTrs2,DAc2}) || Ps <- Perms ],
 	prt_debug(3,"Degs: ~p\nGens: ~p\n",[Degs,Gens]), 
  	Bss  = [ synch_product(Ds,Gs) || Ds <- Degs, Gs <- Gens],
    	lists:foreach(fun({S,_,T,_}) ->
@@ -479,33 +421,11 @@ degeneralize_tgba(States,InitState,Trans) ->
    						  prt_debug(3,"2Buchi automata: ~p states ~p transitions\n",
    									[length(S), length(T)])
    				  end,Bss1),
-
-%% 	Bss2 =
-%% 		lists:sort(fun(B1,B2) ->
-%% 						   buchi_reduce:size_of(B1) < buchi_reduce:size_of(B2)
-%% 				   end,Bss1),
-	
-%%   	lists:foreach(fun({S,_,T,_}) ->
-%%   						  prt_debug("3Buchi automata: ~p states ~p transitions\n",
-%%   									[length(S), length(T)])
-%%   				  end,Bss2),
-
-%%  	prt_debug("Dss: ~p\nLTL2BDG: ~p\n~p\n",
-%% 			  [lists:map(fun(D) ->
-%% 								 permute([1,2,3],[1,2,0],D) end,Degs),
-%%  			  [Degs,{DS,DTrs,DAc},permute_ac([0,1],[1,0],{DS,[0],DTrs,DAc})]),
-%% 	hd(Bss2).
-%% 	B1 = synch_product({DS,[1],DTrs,DAc},{States,InitState,Trans}),
-%%   	B2 = synch_product({DS,[2],DTrs,DAc},{States,InitState,Trans}),
-%% 	case buchi_reduce:size_of(B1) < buchi_reduce:size_of(B2) of
-%% 		true -> B1;
-%% 		false -> B2
-%% 	end.		
 	Bss.
 
 synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}) ->
 	%% 		States = [{S1,S2} || S1 <- States1,
-	%% 												 S2 <- States2],
+	%% 							 S2 <- States2],
 	InitStates = [{S1,S2} || S1 <- InitStates1,
 							 S2 <- InitStates2],
 	Trans = [{{T1,S21},{pick_best(Acc2,T1,Trans1),S22},Lbl} 
@@ -577,13 +497,14 @@ permute_ac_gen(Orig,New,{States,Inits,Trans}) ->
 	 [{S1,S2,Lbl,lists:usort(lists:map(fun(S) -> proplists:get_value(S,Map) end,L))} 
 	  || {S1,S2,Lbl,L} <- Trans]}.
 	
-
+%% @private
 permutations([]) -> [[]];	 
 permutations(Xs) ->
 	[ [Y | Zs ]
 	  || {Y,Ys} <- selections(Xs),
 		 Zs <- permutations(Ys)].
 	
+%% @private
 selections([])->
 	[];
 selections([X | Xs]) ->

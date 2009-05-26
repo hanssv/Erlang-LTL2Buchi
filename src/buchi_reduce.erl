@@ -24,20 +24,32 @@
 %% OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 %% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-%%% File    : buchi_reduce.erl
-%%% Author  : Hans Svensson <>
-%%% Description : General Buchi automata reductions
-%%%               Most only works for unlabled, non-generalized automata
-%%% Created : 19 Mar 2009 by Hans Svensson <>
+%% @author Hans Svensson <hanssv@chalmers.se>
+%% @copyright 2009, Hans Svensson
+%% @doc Module for reduction of Buchi automata.
+%% Exports a general <em>reduce</em> function, which is a collection
+%% of various reduction techniques for Buchi automata.
+%%
+%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
+%% @todo Export a more general reduce (with options!?)
 
 -module(buchi_reduce).
 
--compile(export_all).
+-export([reduce/1]).
 
-%%%
-%% Post-translation optimization of Buchi-automaton
-%%%
+-export([remove_unnecessary_trans/1,
+		 remove_non_reachable/1,
+		 remove_unnecessary_states_simp/1,
+		 reduce_accept/1,
+		 remove_never_accept/1,
+		 remove_fixed_formula_balls/1,
+		 basic_bisim_red/1,
+		 strong_fair_sim_red/1]).
+
+-export([expand_accept/1, remove_unnecessary_states/1]).
+
+%% @doc Reductions and optimization of Buchi-automaton
+%% @spec  (buchi_automaton()) -> buchi_automaton()
 reduce(B) ->
 	reduce1(normalize_trans(B)).
 	
@@ -71,6 +83,7 @@ normalize_trans({States,InitStates,Trans,Accept}) ->
 %% and
 %% Sx -- [a,b] --> Sy and Sx -- [a,!b] --> Sy
 %% is reduced to only Sx -- [a] --> Sy, etc
+%% @private
 remove_unnecessary_trans(B = {_,_,[],_}) ->
 	B;
 remove_unnecessary_trans({States,InitStates,Trans,Accept}) ->
@@ -150,12 +163,14 @@ simp_2(X,Lbl) ->
 	end.
 
 %% Remove non reachable states
+%% @private
 remove_non_reachable(B = {States,InitStates,Trans,_Accept}) ->
     Reachable = reachable(Trans,InitStates),
     RStates = States -- Reachable,
     remove(RStates,B).    
 
 %% Reduce the number of accepting states (not necessarily a good thing!?)
+%% @private
 reduce_accept(B = {States,InitStates,Trans,Accept}) ->
 	{ok,G} = buchi2digraph(B),
 	InCycle = lists:flatten(digraph_utils:cyclic_strong_components(G)),
@@ -188,6 +203,7 @@ accepts0({_,_V1,V2,_},Accept) ->
 
 
 %% Remove states that can never lead to an accepting state
+%% @private
 remove_never_accept(B = {States,_InitStates,_Trans,Accept}) ->
 	{ok,G} = buchi2digraph(B),
 	%Strongly connected components containing an accepting state
@@ -211,6 +227,7 @@ reaches_accept(Reachable,[SC | SCs]) ->
 
 %% Remove unnecessary states
 %% This one is dubious...
+%% @private
 remove_unnecessary_states_simp({States,InitStates,Trans,Accept}) ->
 	Rems = [ {S1,S2} || S <- States,
 						length([ T || T = {S1_,_,_} <- Trans,
@@ -263,6 +280,7 @@ remove_unnecessary_states(B = {States,InitStates,Trans,Accept}) ->
 %%%
 %% Reduce fixed formula balls
 %%%
+%% @private
 remove_fixed_formula_balls(B = {_States,_InitStates,Trans,_Accept}) ->
 	{ok,G} = buchi2digraph(B),
 	SCs = lists:filter(
@@ -324,6 +342,7 @@ collapse_balls(SCs,{States,InitStates,Trans,Accept}) ->
 %%%
 %% Basic bisimulation reduction
 %%%
+%% @private
 basic_bisim_red(_B = {States,InitStates,Trans,Accept}) ->
 	CInit0 = lists:reverse([{N,1} || N <- States]),
 	CInit1 = lists:usort([{N,1} || N <- Accept] ++ [{N,2} || N <- States -- Accept]),
@@ -354,6 +373,7 @@ bbr(C0,C1,Ss,Trs) ->
 %%%
 %% Strong fair simulation reduction 
 %%%
+%% @private
 strong_fair_sim_red(_B = {States,InitStates,Trans,Accept}) ->
 %% 	io:format("B: ~w\n",[_B]),
 	CInit0 = [{N,1} || N <- States],
@@ -427,13 +447,14 @@ i_max_nb_set([NBi | NBs],Set,Po) ->
 		_ -> 
 			i_max_nb_set(NBs,Set,Po)
 	end.
+
 %% i_maximal
-i_maximal(Q,{CQ1,Tau},Trans,C,Po) ->
-%% 	io:format("Is ~p i_maximal for ~p (~p)",[{CQ1,Tau},Q,Trans]),
-	IDom = [ i_dominates({lkp_c(S2,C),Lbl},{CQ1,Tau},Po)
-			 || {S1,S2,Lbl} <- Trans,
-				Q == S1],
-	not lists:any(fun(X) -> X end,IDom).
+%% i_maximal(Q,{CQ1,Tau},Trans,C,Po) ->
+%% %% 	io:format("Is ~p i_maximal for ~p (~p)",[{CQ1,Tau},Q,Trans]),
+%% 	IDom = [ i_dominates({lkp_c(S2,C),Lbl},{CQ1,Tau},Po)
+%% 			 || {S1,S2,Lbl} <- Trans,
+%% 				Q == S1],
+%% 	not lists:any(fun(X) -> X end,IDom).
 
 i_dominates({C1,Sig},{C2,Tau},Po) ->
 	case po(C2,C1,Po) of
@@ -535,8 +556,3 @@ stmap(N,Ns) ->
     case lists:keysearch(N,2,Ns) of
 		{value,{N2,N}} -> N2
     end.
-
-sccs(B) ->
-	{ok,G} = buchi2digraph(B),
-	io:format("SCCS: ~p\n",[digraph_utils:strong_components(G)]),
-	digraph:delete(G).

@@ -29,15 +29,62 @@
 %%% Description : Rewrite(s) for ltl formulas
 %%% Created : 19 Mar 2009 by Hans Svensson <>
 
+%% @author Hans Svensson <hanssv@chalmers.se>
+%% @copyright 2009, Hans Svensson
+%% @doc Module for rewriting of LTL formula.
+%% The rewriting engine is very similar to what is outlined and used in
+%% Wring and the paper about Wring.
+%% @reference See <a href="http://www.ist.tugraz.at/staff/bloem/wring.html">Wring 
+%% homepage</a> for more information.
+
 -module(ltl_rewrite).
 
-%-export([rewrite/1]).
--compile(export_all).
+-export([rewrite/1]).
 
-%%%
+
+%% @doc Rewrite LTL formula.
 %% Pre-translation rewriting of LTL formula in the
-%% spirit of Wring etc. (Eventually)
-%%%
+%% spirit of Wring. The rewrite rules used are listed below, 
+%% the list of rules is heuristically found to reduce the
+%% size of the Buchi automaton resulting from translation
+%% of the LTL expression.
+%% <br/>
+%% List of formulas (p, q, and r are arbitrary LTL formulas):<br/>
+%% <ul>
+%% <li>!ltrue ==&gt; lfalse </li>
+%% <li>!lfalse ==&gt; ltrue </li>
+%% <li>p &amp; p ==&gt; p </li>
+%% <li>p &amp; lfalse ==&gt; lfalse </li>
+%% <li>lfalse &amp; p ==&gt; lfalse </li>
+%% <li>p &amp; ltrue ==&gt; p </li>
+%% <li>ltrue &amp; p ==&gt; p </li>
+%% <li>p &amp; !p ==&gt; lfalse </li>
+%% <li>!p &amp; p ==&gt; lfalse </li>
+%% <li>p | p ==&gt; p </li>
+%% <li>p | lfalse ==&gt; p </li>
+%% <li>lfalse | p ==&gt; p </li>
+%% <li>p | ltrue ==&gt; ltrue </li>
+%% <li>ltrue | p ==&gt; ltrue </li>
+%% <li>p | !p ==&gt; ltrue </li>
+%% <li>!p | p ==&gt; ltrue </li>
+%% <li><b>X</b>  p <b>U</b> <b>X</b>  q ==&gt; <b>X</b>  (p <b>U</b> q) </li>
+%% <li>p <b>R</b> q &amp; p <b>R</b> r ==&gt; p <b>R</b> (q &amp; r) </li>
+%% <li>p <b>R</b> r | q <b>R</b> r ==&gt; (p | q) <b>R</b> r </li>
+%% <li><b>X</b>  p &amp; <b>X</b>  q ==&gt; <b>X</b>  (p &amp; q) </li>
+%% <li><b>X</b>  ltrue ==&gt; ltrue </li>
+%% <li>p <b>U</b> lfalse ==&gt; lfalse </li>
+%% <li>[] (&lt;&gt; p) | [] (&lt;&gt; q) ==&gt; [] (&lt;&gt; (p | q)) </li>
+%% <li>&lt;&gt; <b>X</b>  p ==&gt; <b>X</b>  (&lt;&gt; p) </li>
+%% <li>[] ([] (&lt;&gt; p)) ==&gt; [] (&lt;&gt; p) </li>
+%% <li>&lt;&gt; ([] (&lt;&gt; p)) ==&gt; [] (&lt;&gt; p) </li>
+%% <li><b>X</b>  ([] (&lt;&gt; p)) ==&gt; [] (&lt;&gt; p) </li>
+%% <li>&lt;&gt; (p &amp; [] (&lt;&gt; q)) ==&gt; &lt;&gt; p &amp; [] (&lt;&gt; q) </li>
+%% <li>[] (p | [] (&lt;&gt; q)) ==&gt; [] p | [] (&lt;&gt; q) </li>
+%% <li><b>X</b>  (p &amp; [] (&lt;&gt; q)) ==&gt; <b>X</b>  p &amp; [] (&lt;&gt; q) </li>
+%% <li><b>X</b>  (p | [] (&lt;&gt; q)) ==&gt; <b>X</b>  p | [] (&lt;&gt; q) </li>
+%% </ul>
+%%
+%% @spec (ltl_formula()) -> ltl_formula()
 rewrite(Phi) ->
 	SPhi = ltl:pnf(ltl2buchi:simplify(ltl:pnf(Phi))),
 	s_rewrite(SPhi).
@@ -221,27 +268,12 @@ insert_bindings(P,Env) ->
 simplify_rew_rules(Rules) ->
 	[{ltl2buchi:simplify(F),ltl2buchi:simplify(T)} || {F,T} <- Rules].
 
-print_rules() ->
-	lists:foreach(fun({From,To}) ->
-						  io:format("~s ==> ~s\n",[ltl:pp(From),ltl:pp(To)])
-				  end,rew_rules()).
+%% print_rules() ->
+%% 	lists:foreach(fun({From,To}) ->
+%% 						  io:format("~s ==> ~s\n",[ltl:pp(From),ltl:pp(To)])
+%% 				  end,rew_rules()).
 
-print_simple_rules() ->
-	lists:foreach(fun({From,To}) ->
-						  io:format("~s ==> ~s\n",[ltl:pp(From),ltl:pp(To)])
-				  end,simplify_rew_rules(rew_rules())).
-
-
-%%%% Simple test examples
-ltl1() ->
-	ltl:land(
-	  ltl:prop(x),
-	  ltl:prop(x)).
-ltl2() ->
-	ltl:land(
-	  ltl:lor(ltl:next(ltrue),ltl:prop(x)),
-	  ltl:lor(ltl:prop(y),ltrue)).
-ltl3() ->
-	ltl:lor(
-	  ltl:always(ltl:eventually(ltl:until(ltl:prop(a),ltl:prop(b)))),
-	  ltl:always(ltl:eventually(ltl:prop(c)))).
+%% print_simple_rules() ->
+%% 	lists:foreach(fun({From,To}) ->
+%% 						  io:format("~s ==> ~s\n",[ltl:pp(From),ltl:pp(To)])
+%% 				  end,simplify_rew_rules(rew_rules())).

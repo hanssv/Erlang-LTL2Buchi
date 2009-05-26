@@ -33,6 +33,10 @@
 
 -compile(export_all).
 
+translate(Phi) ->
+	B0 = basic_ltl_to_buchi(Phi),
+    buchi:degeneralize(lbl2nonlbl(B0)).
+
 %% Recognizers for some ltl-formulas
 is_until({until,_,_}) -> true;
 is_until(_) -> false.

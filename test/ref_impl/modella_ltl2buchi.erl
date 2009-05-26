@@ -27,6 +27,7 @@
 %%% File    : modella_ltl2buchi.erl
 %%% Author  : Hans Svensson <>
 %%% Description : Ltl2Buchi translation from MODELLA paper
+%%%               UNFINISHED NOT WORKING!!
 %%% Created : 18 Mar 2009 by Hans Svensson <>
 
 -module(modella_ltl2buchi).
