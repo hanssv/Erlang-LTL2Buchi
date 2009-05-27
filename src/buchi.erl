@@ -384,7 +384,7 @@ remove_subsets1([Set | Sets],Sets2) ->
 		true -> remove_subsets1(Sets,[Set | Sets2]);
 		false ->
 			case not lists:any(fun(X) -> X end,
-							   lists:map(fun(X) -> sets:is_subset(Set,X) end,Sets ++ Sets2)) of
+							   lists:map(fun(X) -> sets:is_subset(X,Set) end,Sets ++ Sets2)) of
 				true  -> remove_subsets1(Sets,[Set | Sets2]);
 				false -> remove_subsets1(Sets,Sets2)
 			end

@@ -5,6 +5,7 @@ default: tool
 all: tool tests doc
 
 tool:
+	cd src; erl -noshell -eval "yecc:yecc(\"ltl_parser.yrl\", \"ltl_parser.erl\")" -s init stop
 	cd ebin; $(EMAKE)
 
 clean:

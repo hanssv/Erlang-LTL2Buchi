@@ -35,7 +35,7 @@
 
 translate(Phi) ->
 	B0 = basic_ltl_to_buchi(Phi),
-    buchi:degeneralize(lbl2nonlbl(B0)).
+    buchi:degeneralize(buchi:lbl2nonlbl(B0)).
 
 %% Recognizers for some ltl-formulas
 is_until({until,_,_}) -> true;
@@ -148,8 +148,8 @@ basic_ltl_to_buchi(Phi) ->
 	end.
 
 basic_ltl_to_buchi(Node, Nodes) ->
-    %%   	io:format("Node: ~p\n",[Node]),
-    %%   	io:format("Nodes: ~p\n",[Nodes]),
+%%        	io:format("Node: ~p\n",[Node]),
+%%        	io:format("Nodes: ~p\n",[Nodes]),
     case Node#node.new of
       [] ->
 	  case [N || N <- Nodes,

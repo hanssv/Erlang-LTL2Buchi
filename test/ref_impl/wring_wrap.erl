@@ -70,7 +70,7 @@ run(Ltl) ->
 	Cmd = "../test/ref_impl/scripts/run_wring.sh /tmp/foo '" ++ StrLtl ++ "'",
 %% 	io:format("Cmd:~s\n",[Cmd]),
 	Res = os:cmd(Cmd),
-%%   	io:format("Res: \n~s\n",[Res]),
+%%    	io:format("Res: \n~s\n",[Res]),
 	parse_res(Res).
 
 parse_res(Str) ->
@@ -159,8 +159,11 @@ mk_buchi(States,Arcs,FairS) ->
 	InitStates = [ proplists:get_value(N,TrTbl) || {N,_,true} <- Arcs ],
 	Trans = [{proplists:get_value(S1,TrTbl),proplists:get_value(S2,TrTbl)}
 			 || {S1,Sn,_} <- Arcs, S2 <- Sn],
-	Accepts = [[proplists:get_value(N,TrTbl) || N <- Fs]
-			   || Fs <- FairS],
+	Accepts = case FairS of
+				  [] -> [lists:seq(1,length(States))];
+				  _ -> [[proplists:get_value(N,TrTbl) || N <- Fs]
+						|| Fs <- FairS]
+			  end,
 	{MStates,InitStates,Trans,Accepts}.
 	
 							   

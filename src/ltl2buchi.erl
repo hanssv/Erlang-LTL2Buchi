@@ -73,7 +73,7 @@ translate_norew(Phi) ->
 pick_smallest(Bs) ->
 	hd(lists:sort(
 		 fun(B1,B2) ->
-				 buchi_reduce:size_of(B1) < buchi_reduce:size_of(B2)
+				 buchi:size_of(B1) < buchi:size_of(B2)
 		 end,Bs)).
 
 %%%
@@ -433,7 +433,7 @@ synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}
 				T1 <- States1],
 	Accept = [ {A,S} || A <- Accept1,
 						S <- States2],
-    Reachable = lists:usort(buchi_reduce:reachable(Trans,InitStates)),
+    Reachable = lists:usort(buchi:reachable({[],InitStates,Trans,[]})),
 	Trans_ = [Tr || Tr = {S1,_,_} <- Trans, lists:member(S1,Reachable)],
  	prt_debug(5,"Trans: ~p\nReach: ~p\n",[Trans_,Reachable]), 
 	case Reachable of

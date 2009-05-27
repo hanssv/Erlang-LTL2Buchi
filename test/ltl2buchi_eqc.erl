@@ -46,7 +46,7 @@ w_timeout(Fun, Arg) ->
     ?LET(X, (elements([Arg])), (Fun(X))).
 
 lprop() ->
-    elements([{lprop,X} || X <- [a,b,c,d,e,f]]).
+    elements([{lprop,X} || X <- [a,b,c,d,e,h]]).
 
 %% A setification of non-empty list (list1)
 alpha() -> ?LET(Lst, (list1(lprop())), (lists:usort(Lst))).
@@ -192,7 +192,7 @@ negate(lfalse) ->  [ltrue];
 negate(_Phi) ->       [].
 
 translations() ->
-    [{"basic              ", fun buchi:ltl2buchi_basic/1},
+    [{"basic              ", fun basic_ltl2buchi:translate/1},
 	 %% {"basic_red          ",
 	 %% fun (Phi) -> buchi_reduce:reduce(buchi:ltl2buchi_basic(Phi)) end},
      %%      {"basic_red3         ",
@@ -381,6 +381,7 @@ prop_test3() ->
 		  Alpha, (alpha()),
 		  ?FORALL(
 			 Phi, (ltl_formula(Alpha)),
+			 ?IMPLIES(wring_ok(Phi),
 			 begin
 				 Bu1 = B1(Phi),
 				 Bu2 = B2(Phi),
@@ -390,7 +391,7 @@ prop_test3() ->
 							  (collect(is_ltl_witness_buchi(W, Bu1),
 									   is_ltl_witness_buchi(W, Bu1) ==
 									   is_ltl_witness_buchi(W, Bu2)))))
-			 end))).
+			 end)))).
 
 %% Properties for checking the reduce-function
 prop_reduce_parts() ->
@@ -400,7 +401,7 @@ prop_reduce_parts() ->
 	   ?FORALL(
 		  L, ltl_formula(A),
 		  begin
-			  B = buchi:ltl2buchi_basic(L),
+			  B = basic_ltl2buchi:translate(L),
 			  B2 = buchi_reduce:remove_unnecessary_trans(B),
 			  B3 = buchi_reduce:remove_non_reachable(B),
 			  B4 = buchi_reduce:reduce_accept(B),
@@ -447,7 +448,7 @@ prop_check_reduce2(F) ->
 			 W, witness(A),
 			 begin
 				 %%            B1 = ltl2buchi:translate(Phi),
-				 B1 = buchi:ltl2buchi_basic(Phi),
+				 B1 = basic_ltl2buchi:translate(Phi),
 				 %%        B2 = buchi:basic_bisim_red(B1),
 				 B2 = F(B1),
 				 %%            B2 = buchi:reduce3(B1),
@@ -463,10 +464,10 @@ prop_check_rewrite() ->
     ?FORALL(
 	   L,ltl_formula(),
 	   begin
-		   Bu1 = buchi:ltl2buchi_basic(L),
-		   Bu2 = buchi:ltl2buchi_basic(ltl_rewrite:rewrite(ltl:lnot(L))),
-		   Bu3 = buchi:ltl2buchi_basic(ltl_rewrite:rewrite(L)),
-		   Bu4 = buchi:ltl2buchi_basic(ltl:lnot(L)),
+		   Bu1 = basic_ltl2buchi:translate(L),
+		   Bu2 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(ltl:lnot(L))),
+		   Bu3 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(L)),
+		   Bu4 = basic_ltl2buchi:translate(ltl:lnot(L)),
 		   Bu1Bu2 = buchi:intersection(Bu1, Bu2),
 		   Bu3Bu4 = buchi:intersection(Bu3, Bu4),
 		   ?WHENFAIL(
@@ -643,6 +644,26 @@ prop_discover_diffsize2() ->
 						 buchi:size_of(B1), buchi:size_of(B2), B2]),
 			  buchi:size_of(B2) + 3 > buchi:size_of(B1))
 	   end).
+
+
+%%%
+%% Testing the parser
+%%%
+
+prop_parse() ->
+	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
+			begin
+				ltl_parse:string(ltl:pp(Ltl,Style)),
+				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), true)
+			end).
+
+prop_parse2() ->
+	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
+			begin
+				S1 = ltl:pp(Ltl,Style),
+				Ltl2  = ltl_parse:string(S1),
+				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), Ltl == Ltl2)
+			end).
 
 
 %%
