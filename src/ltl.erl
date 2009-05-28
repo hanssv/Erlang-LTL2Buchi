@@ -53,7 +53,7 @@
 -export([land/1,lor/1]).
 
 -export([negate/1, pnf/1, pp/1, pp/2, print_ltl/1]).
-		
+
 %% @doc Form an LTL proposition.
 %% @spec (atom()) -> ltl_formula()
 prop(X) ->
@@ -162,16 +162,19 @@ negate(Phi) -> lnot(Phi).
 pnf({lnot,{always,Phi}}) ->         {eventually,pnf({lnot,Phi})};
 pnf({lnot,{eventually,Phi}}) ->     {always,pnf({lnot,Phi})};
 pnf({lnot,{next,Phi}}) ->           {next,pnf({lnot,Phi})};
-pnf({lnot,{until,Psi,Phi}}) ->      {release,pnf({lnot,Psi}),pnf({lnot,Phi})};
-pnf({lnot,{release,Psi,Phi}}) ->    {until,pnf({lnot,Psi}),pnf({lnot,Phi})};
 pnf({lnot,{lnot,Phi}}) ->           pnf(Phi);
-pnf({lnot,{land,Phi1,Phi2}}) ->     {lor,pnf({lnot,Phi1}),pnf({lnot,Phi2})};
-pnf({lnot,{lor,Phi1,Phi2}}) ->      {land,pnf({lnot,Phi1}),pnf({lnot,Phi2})};
 pnf({lnot,{ltrue}}) ->              lfalse;
 pnf({lnot,{lfalse}}) ->             ltrue;
-pnf({Op,Phi}) ->                    {Op,pnf(Phi)};
+pnf({lnot,{Op,Phi1,Phi2}}) ->       {dual_op(Op),pnf(lnot(Phi1)),pnf(lnot(Phi2))};
 pnf({Op,Phi1,Phi2}) ->              {Op,pnf(Phi1),pnf(Phi2)};
+pnf({Op,Phi}) ->                    {Op,pnf(Phi)};
 pnf(Phi) ->                         Phi.
+
+dual_op(land) -> lor;
+dual_op(lor) -> land;
+dual_op(release) -> until;
+dual_op(until) -> release.
+
 
 %% Print a set of ltl formulas, not beautiful ;-)
 %% print_sets_ltl(Xs) when is_list(Xs) ->
@@ -198,55 +201,39 @@ pp(F) ->
 %% The resulting string is formatted according to the specified 
 %% format.
 %% @spec (ltl_formula(),ltl_print_format()) -> ltl_formula()
-pp({lprop,X},S) ->
-	pp_lprop(atom_to_list(X),S);
-pp({lor,Phi1,Phi2},S) ->
-	case op_prio(Phi1,S) >= op_prio(lor,S) of
-		true  -> "(" ++ pp(Phi1,S) ++ ")" ++ ltl_sym(lor,S);
-		false -> pp(Phi1,S) ++ ltl_sym(lor,S)
-	end 
-		++
-	case op_prio(Phi2,S) >= op_prio(lor,S) of
-		true  -> "(" ++ pp(Phi2,S) ++ ")";
-		false -> pp(Phi2,S)
-	end; 
-pp({land,Phi1,Phi2},S) ->
-	case op_prio(Phi1,S) >= op_prio(land,S) of
-		true  -> "(" ++ pp(Phi1,S) ++ ")" ++ ltl_sym(land,S);
-		false -> pp(Phi1,S) ++ ltl_sym(land,S)
-	end 
-		++
-	case op_prio(Phi2,S) >= op_prio(land,S) of
-		true  -> "(" ++ pp(Phi2,S) ++ ")";
-		false -> pp(Phi2,S)
-	end; 
-pp({until,Psi,Phi},S) ->
-	case op_prio(Psi,S) >= op_prio(until,S) of
-		true  -> "(" ++ pp(Psi,S) ++ ")" ++ ltl_sym(until,S);
-		false -> pp(Psi,S) ++ ltl_sym(until,S)
-    end 
-		++
-	case op_prio(Phi,S) >= op_prio(until,S) of
-		true  -> "(" ++ pp(Phi,S) ++ ")";
-		false -> pp(Phi,S)
-    end;
-pp({release,Psi,Phi},S) ->
-	case op_prio(Psi,S) >= op_prio(release,S) of
-		true  -> "(" ++ pp(Psi,S) ++ ")" ++ ltl_sym(release,S);
-		false -> pp(Psi,S) ++ ltl_sym(release,S)
-    end 
-		++
-	case op_prio(Phi,S) >= op_prio(release,S) of
-		true  -> "(" ++ pp(Phi,S) ++ ")";
-		false -> pp(Phi,S)
-    end;
-pp({Op,Phi},S) -> %% [],<>,!,X
-	case op_prio(Phi,S) >= op_prio(Op,S) of
-		true  -> ltl_sym(Op,S) ++ "(" ++ pp(Phi,S) ++ ")";
-		false -> ltl_sym(Op,S) ++ pp(Phi,S)
-	end;
-pp(X,_S) when is_atom(X) ->
-	atom_to_list(X).
+pp({lprop, X}, S) ->
+    pp_lprop(atom_to_list(X), S);
+pp({lor, Phi1, Phi2}, S) ->
+    format_expr1(Phi1, S, lor) ++ format_expr2(Phi2, S, lor);
+pp({land, Phi1, Phi2}, S) ->
+    format_expr1(Phi1, S, land) ++ format_expr2(Phi2, S, land);
+pp({until, Psi, Phi}, S) ->
+    format_expr1(Psi, S, until) ++ format_expr2(Phi, S, until);
+pp({release, Psi, Phi}, S) ->
+    format_expr1(Psi, S, release) ++ format_expr2(Phi, S, release);
+pp({Op, Phi}, S) -> %% [],<>,!,X
+    format_expr(Phi, S, Op);
+pp(X, _S) when is_atom(X) ->
+    atom_to_list(X).
+
+format_expr(Phi, S, Op) ->
+    case op_prio(Phi, S) >= op_prio(Op, S) of
+      true -> ltl_sym(Op, S) ++ "(" ++ pp(Phi, S) ++ ")";
+      false -> ltl_sym(Op, S) ++ pp(Phi, S)
+    end.
+
+format_expr1(Phi1, S, Op) ->
+    case op_prio(Phi1, S) >= op_prio(Op, S) of
+      true -> "(" ++ pp(Phi1, S) ++ ")" ++ ltl_sym(Op, S);
+      false -> pp(Phi1, S) ++ ltl_sym(Op, S)
+    end.
+
+format_expr2(Phi2, S, Op) ->
+    case op_prio(Phi2, S) >= op_prio(Op, S) of
+      true -> "(" ++ pp(Phi2, S) ++ ")";
+      false -> pp(Phi2, S)
+    end.
+
 
 %% @private
 pp_lprop(X,wring) ->

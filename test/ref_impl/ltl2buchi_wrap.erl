@@ -39,11 +39,11 @@ run(Ltl) ->
 %%	io:format("Cmd:~s\n",[Cmd]),
 	Res = os:cmd(Cmd),
 %%    	io:format("Res: \n~s\n",[Res]),
-	Acc = fun(#xmlText{value = " ", pos = P}, Acc, S) ->
-				  {Acc, P, S};  % new return format
-			 (X, Acc, S) ->
-				  {[X|Acc], S}
-		  end,
+%% 	Acc = fun(#xmlText{value = " ", pos = P}, Acc, S) ->
+%% 				  {Acc, P, S};  % new return format
+%% 			 (X, Acc, S) ->
+%% 				  {[X|Acc], S}
+%% 		  end,
 	{Doc,[]} = xmerl_scan:string(Res,[{space,normalize}]),
 %% 	io:format("After xmer_scan:string~n",[]),
 %%  	io:format("Document is ~n~p~n~n",[simpleXML(Doc)]),

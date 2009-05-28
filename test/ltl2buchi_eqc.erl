@@ -665,7 +665,6 @@ prop_parse2() ->
 				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), Ltl == Ltl2)
 			end).
 
-
 %%
 %% Functions
 %%
