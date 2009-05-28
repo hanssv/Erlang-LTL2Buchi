@@ -26,19 +26,18 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module defining Buchi automata + utility functions
+%% @doc Module defining Buchi automata
 %%
 %% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
 %% @todo Use digraphs for representing Buchi automata.
 
 -module(buchi).
 
--export([is_labeled/1,is_nonlabeled/1,is_generalized/1,size_of/1,
-		 is_empty/1,intersection/2,
-		 reachable_loop_states/1, ltl_intersection/2, reachable/1,
-		 lbl2nonlbl/1, 
-		 buchi2digraph/1,remove_subsets/1,
+-export([is_labeled/1,is_nonlabeled/1,is_generalized/1,
+		 is_empty/1,intersection/2, lbl2nonlbl/1, 
 		 empty_buchi/0,empty_labeled_buchi/0,
+		 reachable_loop_states/1, ltl_intersection/2, 
+		 buchi2digraph/1,remove_subsets/1,
 		 degeneralize/1, sccs/1]).
 
 %% General types
@@ -108,14 +107,6 @@ is_generalized({_,_,_,[Ac | _]}) ->
     is_list(Ac);
 is_generalized(_) ->
     false.
-
--spec(size_of/1::(buchi())->integer()).
-%% @doc Size of Buchi automaton.
-%% Returns a (bad) measure of the size of the BA
-%% @spec (buchi_automaton()) -> int()
-size_of({States,_InitStates,Trans,_Accepts}) ->
-    length(States) + length(Trans).
-
 
 %%
 %% Main functions on BA
@@ -189,7 +180,7 @@ intersection2(_B1 = {_States1, InitStates1, Trans1, Accept1},
 		  {S2_1, S2_2, St2} <- Trans2,
 		  St1 == St2,
 		  lists:member(S2_1, Accept2)],
-    Reachable = lists:usort(reachable(AllTrans, AllInitStates)),
+    Reachable = lists:usort(buchi_utils:reachable(AllTrans, AllInitStates)),
     case Reachable of
       [] -> {[], [], [], []};
       _ ->
@@ -240,7 +231,7 @@ ltl_intersection2(_B1 = {_States1,InitStates1,Trans1,Accept1},
 			{S2_1,S2_2,St2} <- Trans2, 
 			is_sat(St2,St1),
 			lists:member(S2_1,Accept2) ],
-    Reachable = lists:usort(reachable(AllTrans,AllInitStates)),
+    Reachable = lists:usort(buchi_utils:reachable(AllTrans,AllInitStates)),
     case Reachable of
 		[] -> {[],[],[],[]};
 		_ ->
@@ -325,7 +316,7 @@ degeneralize2(B = {States,InitStates,Trans,Accepts}) ->
 					Accepts1 = remove_subsets(Accepts),
 					%% 		io:format("Accpts: ~p\nAccepts1: ~p\n",[Accepts,Accepts1]),
 					Trans1 = degen_trans(Trans,length(States),length(Accepts1),Accepts1),
-					Reachable = lists:usort(reachable(Trans1,InitStates)),
+					Reachable = lists:usort(buchi_utils:reachable(Trans1,InitStates)),
 					Trans2 = [{S1,S2,St} || {S1,S2,St} <- Trans1, lists:member(S1,Reachable)],
 					Accept = [S || S <- hd(Accepts1),lists:member(S,Reachable)],
 					StMap = lists:zip(lists:seq(1,length(Reachable)),Reachable),
@@ -390,46 +381,6 @@ remove_subsets1([Set | Sets],Sets2) ->
 			end
 	end.
 
-
-
-
-
-%% A dfs...
-%% @doc Return all reachable states of Buchi automaton.
-%% Does a depth first traversal of the automaton.
-%% @spec (buchi_automaton()) -> [state()]
-reachable(_B = {_States,InitStates,Trans,_Accept}) ->
-	reachable(Trans,InitStates).
-
-reachable(Trans,InitStates) ->
-    reachable(Trans,InitStates,[]).
-
-reachable(_,[],Reached) ->	
-    Reached;
-reachable(Trans,[State|States],Reached) ->
-    {States2,Reached2} = reachable(State,Trans,States,Reached),
-    reachable(Trans,States2,Reached2).
-
-reachable(State, [], States, Reached) ->
-    {States, [State| Reached]};
-reachable(State, [{S1, S2, _}| Trans], States, Reached) ->
-    case S1 == State andalso not lists:member(S2, [State| States]) andalso
-			       not lists:member(S2, Reached)
-	of
-      true ->
-	  reachable(State, Trans, [S2| States], Reached);
-      false ->
-	  reachable(State, Trans, States, Reached)
-    end;
-reachable(State, [{S1, S2}| Trans], States, Reached) ->
-    case S1 == State andalso not lists:member(S2, [State| States]) andalso
-			       not lists:member(S2, Reached)
-	of
-      true ->
-	  reachable(State, Trans, [S2| States], Reached);
-      false ->
-	  reachable(State, Trans, States, Reached)
-    end.
 
 %% Build buichi-digraph
 %% @doc Translate  Buchi automaton into digraph.

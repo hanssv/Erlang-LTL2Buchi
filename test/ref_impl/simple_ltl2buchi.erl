@@ -59,7 +59,7 @@ simple_cover(Phi) ->
 
 simple_to_buchi(Phi) ->
 %% 	io:format("Original formula: ~p\n",[print_ltl(Phi)]),
-	SimpPhi = ltl:normalize(ltl2buchi:simplify(ltl:pnf(Phi))),
+	SimpPhi = ltl_utils:normalize(ltl2buchi:simplify(ltl:pnf(Phi))),
 	Covs = simple_covers([SimpPhi],[]),
 %% 	io:format("Cover: ~p\n",[print_covers(Covs)]),
 	RawStates = lists:usort(lists:concat([S || {_,S} <- Covs])),
@@ -78,7 +78,7 @@ simple_to_buchi(Phi) ->
 							  [ {N,lkp(S2,States)} || S2 <- SS ]
 					  end,States),
 			Untils = lists:usort(
-					   lists:filter(fun basic_ltl2buchi:is_until/1,ltl:subformulas(SimpPhi))),
+					   lists:filter(fun basic_ltl2buchi:is_until/1,ltl_utils:subformulas(SimpPhi))),
 			AcceptSets = lists:map(fun(P) ->
 										   accept_states2(P,States)
 								   end,Untils),

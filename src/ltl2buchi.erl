@@ -73,7 +73,7 @@ translate_norew(Phi) ->
 pick_smallest(Bs) ->
 	hd(lists:sort(
 		 fun(B1,B2) ->
-				 buchi:size_of(B1) < buchi:size_of(B2)
+				 buchi_utils:size_of(B1) < buchi_utils:size_of(B2)
 		 end,Bs)).
 
 %%%
@@ -151,12 +151,12 @@ ltl2buchi(Phi) ->
 						  || #node{nodeid = N1,old = Old, 
 								   incoming = Ins, accepting = Acc} <- NodeSet2,
 							 N2 <- Ins],%),
-			TransAc_ = [{1,1,[],[2]},
-					   {1,1,[{lprop,a}],[1,2]},
-					   {1,1,[{lprop,a}],[1,2]},
-					   {1,2,[],[1]},
-					   {2,1,[{lprop,a}],[1,2]},
-					   {2,2,[],[1]}],
+%% 			TransAc_ = [{1,1,[],[2]},
+%% 					   {1,1,[{lprop,a}],[1,2]},
+%% 					   {1,1,[{lprop,a}],[1,2]},
+%% 					   {1,2,[],[1]},
+%% 					   {2,1,[{lprop,a}],[1,2]},
+%% 					   {2,2,[],[1]}],
   			prt_debug(1,"Generalized buchi automata: ~p states ~p transitions\n",
   					  [length(States), length(TransAc)]),
  			prt_debug(2,"Gen: ~p\n",[{States,InitStates,TransAc}]),
@@ -433,7 +433,7 @@ synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}
 				T1 <- States1],
 	Accept = [ {A,S} || A <- Accept1,
 						S <- States2],
-    Reachable = lists:usort(buchi:reachable({[],InitStates,Trans,[]})),
+    Reachable = lists:usort(buchi_utils:reachable(InitStates,Trans)),
 	Trans_ = [Tr || Tr = {S1,_,_} <- Trans, lists:member(S1,Reachable)],
  	prt_debug(5,"Trans: ~p\nReach: ~p\n",[Trans_,Reachable]), 
 	case Reachable of
@@ -478,12 +478,12 @@ safe_seq(N,M) ->
 	lists:seq(N,M).
 
 
-permute(Orig,New,{States,InitS,Trans,Accepts}) ->
-	Map = lists:zip(Orig,New),
-	{States,
-	 [proplists:get_value(S,Map) || S <- InitS],
-	 lists:usort([{proplists:get_value(S1,Map),proplists:get_value(S2,Map),L} || {S1,S2,L} <- Trans]),
-	 [proplists:get_value(S,Map) || S <- Accepts]}.
+%% permute(Orig,New,{States,InitS,Trans,Accepts}) ->
+%% 	Map = lists:zip(Orig,New),
+%% 	{States,
+%% 	 [proplists:get_value(S,Map) || S <- InitS],
+%% 	 lists:usort([{proplists:get_value(S1,Map),proplists:get_value(S2,Map),L} || {S1,S2,L} <- Trans]),
+%% 	 [proplists:get_value(S,Map) || S <- Accepts]}.
 
 permute_ac(Orig,New,{States,InitS,Trans,Accepts}) ->
 	Map = lists:zip(Orig,New),

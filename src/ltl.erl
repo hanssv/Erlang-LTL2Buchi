@@ -34,7 +34,7 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module defining LTL expressions, and some utility functions
+%% @doc Module defining LTL expressions, and a pretty printer.
 %% @reference See <a href="http://en.wikipedia.org/wiki/Linear_temporal_logic">
 %% Linear Temporal Logic</a> for more information on LTL.
 %% @end
@@ -52,8 +52,7 @@
 
 -export([land/1,lor/1]).
 
--export([negate/1, normalize/1, subformulas/1, pnf/1, 
-		 pp/1, pp/2, print_ltl/1]).
+-export([negate/1, pnf/1, pp/1, pp/2, print_ltl/1]).
 		
 %% @doc Form an LTL proposition.
 %% @spec (atom()) -> ltl_formula()
@@ -153,27 +152,6 @@ negate(lfalse) -> ltrue;
 negate(ltrue) -> lfalse;
 negate({lnot, X}) -> X;
 negate(Phi) -> lnot(Phi).
-
-%% @doc Normalize an LTL expression.
-%% Normalize (in effect sort nested ands and ors). Used in order
-%% to avoid a more costly equivalence check in some algorithms.
-%% @spec (ltl_formula()) -> ltl_formula()
-normalize({land, Phi1, Phi2}) ->
-    land(lists:usort([normalize(Phi1), normalize(Phi2)]));
-normalize({lor, Phi1, Phi2}) ->
-    lor(lists:usort([normalize(Phi1), normalize(Phi2)]));
-normalize({Op, Phi}) -> {Op, normalize(Phi)};
-normalize({Op, Phi1, Phi2}) -> {Op, normalize(Phi1), normalize(Phi2)};
-normalize(Phi) -> Phi.
-	
-
-%% @doc The subformulas of an ltl_formula.
-%% Example: (<b>X</b> a) <b>U</b> b gives: [(<b>X</b> a) <b>U</b> b, <b>X</b> a, b, a]
-%% @spec (ltl_formula()) -> [ltl_formula()]
-subformulas(X = {lprop,_}) ->              [X];
-subformulas(Phi0 = {_Op,Phi}) ->         [Phi0 | subformulas(Phi)];
-subformulas(Phi0 = {_Op,Phi1,Phi2}) ->   [Phi0 | subformulas(Phi1) ++ subformulas(Phi2)];
-subformulas(Phi) ->                      [Phi].
 
 %% @doc Positive normal form.
 %% Transform expression into positive normal form 

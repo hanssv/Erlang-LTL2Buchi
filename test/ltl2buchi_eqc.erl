@@ -606,7 +606,7 @@ prop_compare_size() ->
 
 nested_measure([],P) -> P;
 nested_measure([{Name,Buchi} | Trs],P) ->
-    erlang:apply(fun eqc:measure/3,[Name,buchi:size_of(Buchi),nested_measure(Trs,P)]).
+    erlang:apply(fun eqc:measure/3,[Name,buchi_utils:size_of(Buchi),nested_measure(Trs,P)]).
 
 wring_ok(Phi) ->
     case catch wring_wrap:run(Phi) of
@@ -626,8 +626,8 @@ prop_discover_diffsize() ->
 						"which is much smaller " ++
 						"(~p vs ~p) than:\n~p\n",
 						[ltl:pp(Phi, normal), B1, 
-						 buchi:size_of(B1), buchi:size_of(B2), B2]),
-			  buchi:size_of(B1) + 3 > buchi:size_of(B2))
+						 buchi_utils:size_of(B1), buchi_utils:size_of(B2), B2]),
+			  buchi_utils:size_of(B1) + 3 > buchi_utils:size_of(B2))
 	   end).
 
 prop_discover_diffsize2() ->
@@ -641,8 +641,8 @@ prop_discover_diffsize2() ->
 						"which is much *bigger* " ++
 						"(~p vs ~p) than:\n~p\n",
 						[ltl:pp(Phi, normal), B1, 
-						 buchi:size_of(B1), buchi:size_of(B2), B2]),
-			  buchi:size_of(B2) + 3 > buchi:size_of(B1))
+						 buchi_utils:size_of(B1), buchi_utils:size_of(B2), B2]),
+			  buchi_utils:size_of(B2) + 3 > buchi_utils:size_of(B1))
 	   end).
 
 
@@ -735,7 +735,7 @@ remove_release(Phi) ->
 
 is_witness_ltl(#witness{prefix = Prf,loop = Lp},Phi) ->
     SimpPhi = remove_release(ltl2buchi:simplify(Phi)),
-    Subs = ltl:subformulas(SimpPhi),
+    Subs = ltl_utils:subformulas(SimpPhi),
     Res = is_witness_ltl(lists:zip(lists:seq(1,length(Prf++Lp)),Prf ++ Lp),
                          length(Prf)+1,lists:reverse(Subs),[]),
     %%  io:format("Subs: ~p\nRes: ~p\n",[Subs,Res]),

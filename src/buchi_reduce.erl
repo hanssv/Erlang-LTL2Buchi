@@ -165,7 +165,7 @@ simp_2(X,Lbl) ->
 %% Remove non reachable states
 %% @private
 remove_non_reachable(B = {States,InitStates,Trans,_Accept}) ->
-    Reachable = reachable(Trans,InitStates),
+    Reachable = buchi_utils:reachable(Trans,InitStates),
     RStates = States -- Reachable,
     remove(RStates,B).    
 
@@ -504,35 +504,6 @@ buchi2digraph(_B = {States,_InitStates,Trans,Accept}) ->
 						  digraph:add_edge(G,S1,S2,St)
 				  end,Trans),
 	{ok,G}.
-
-%% A dfs...
-reachable(Trans,InitStates) ->
-    reachable(Trans,InitStates,[]).
-
-reachable(_,[],Reached) ->	
-    Reached;
-reachable(Trans,[State|States],Reached) ->
-    {States2,Reached2} = reachable(State,Trans,States,Reached),
-    reachable(Trans,States2,Reached2).
-
-reachable(State,[],States,Reached) ->
-    {States,[State|Reached]};
-reachable(State,[{S1,S2,_} | Trans],States,Reached) ->
-    case (S1 == State) andalso (not lists:member(S2,[State|States])) andalso
-		(not lists:member(S2,Reached)) of
-		true ->
-			reachable(State,Trans,[S2 | States],Reached);
-		false ->
-			reachable(State,Trans,States,Reached)
-    end;
-reachable(State,[{S1,S2} | Trans],States,Reached) ->
-    case (S1 == State) andalso (not lists:member(S2,[State|States])) andalso
-		(not lists:member(S2,Reached)) of
-		true ->
-			reachable(State,Trans,[S2 | States],Reached);
-		false ->
-			reachable(State,Trans,States,Reached)
-    end.
 
 %% Remove Rstates from B and adapt accordingly
 remove(RStates,_B = {States,InitStates,Trans,Accepts}) ->

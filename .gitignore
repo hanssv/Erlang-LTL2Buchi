@@ -7,5 +7,5 @@ doc/erlang.png
 test/ref_impl/Wring
 test/ref_impl/LTL2Buchi
 ebin/*.beam
-src/temp
+*/temp
 src/ltl_parser.erl

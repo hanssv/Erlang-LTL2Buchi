@@ -115,7 +115,7 @@ basic_ltl_to_buchi(Phi) ->
 		[] -> {[],[],[],[]};
 		_ ->
 			Untils = lists:usort(
-					   lists:filter(fun is_until/1,ltl:subformulas(Phi1))),
+					   lists:filter(fun is_until/1,ltl_utils:subformulas(Phi1))),
 			AcceptSets = lists:map(fun(P) ->
 										   accept_states(P,Nodes)
 								   end,Untils),
