@@ -413,14 +413,16 @@ degeneralize_tgba(States,InitState,Trans) ->
  	Bss  = [ synch_product(Ds,Gs) || Ds <- Degs, Gs <- Gens],
    	lists:foreach(fun({S,_,T,_}) ->
    						  prt_debug(3,"1Buchi automata: ~p states ~p transitions\n",
-   									[length(S), length(T)])
+   									[length(S), length(T)]),
+   						  prt_debug(5,"1Buchi automata: ~p states ~p transitions\n",
+   									[S, T])					  
    				  end,Bss),
 
-  	Bss1  = [ buchi_reduce:reduce(B) || B <- Bss ],
-   	lists:foreach(fun({S,_,T,_}) ->
-   						  prt_debug(3,"2Buchi automata: ~p states ~p transitions\n",
-   									[length(S), length(T)])
-   				  end,Bss1),
+%%   	Bss1  = [ buchi_reduce:reduce(B) || B <- Bss ],
+%%    	lists:foreach(fun({S,_,T,_}) ->
+%%    						  prt_debug(3,"2Buchi automata: ~p states ~p transitions\n",
+%%    									[length(S), length(T)])
+%%    				  end,Bss1),
 	Bss.
 
 synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}) ->
@@ -433,7 +435,7 @@ synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}
 				T1 <- States1],
 	Accept = [ {A,S} || A <- Accept1,
 						S <- States2],
-    Reachable = lists:usort(buchi_utils:reachable(InitStates,Trans)),
+    Reachable = lists:usort(buchi_utils:reachable(Trans,InitStates)),
 	Trans_ = [Tr || Tr = {S1,_,_} <- Trans, lists:member(S1,Reachable)],
  	prt_debug(5,"Trans: ~p\nReach: ~p\n",[Trans_,Reachable]), 
 	case Reachable of
