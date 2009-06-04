@@ -66,7 +66,7 @@ translate(Phi) ->
 %% @spec (ltl_formula()) -> buchi_automaton()
 translate_norew(Phi) ->
 	Bs = ltl2buchi(Phi),
-	OptBs = lists:map(fun buchi_reduce:reduce/1,Bs),
+	OptBs = pmap(fun buchi_reduce:reduce/1,Bs),
 	_OptB = pick_smallest(OptBs).
 
 %%% Pick the best!
@@ -75,6 +75,25 @@ pick_smallest(Bs) ->
 		 fun(B1,B2) ->
 				 buchi_utils:size_of(B1) < buchi_utils:size_of(B2)
 		 end,Bs)).
+
+%%% Simple pmap implementation
+pmap(Fun, L) ->
+    S = self(),
+    Pids = lists:map(fun(I) ->
+                         spawn(fun() -> do_f(S, Fun, I) end)
+                     end, L),
+    gather(Pids).
+
+gather([H|T]) ->
+    receive
+        {H, Ret} -> [Ret|gather(T)]
+    end;
+gather([]) ->
+    [].
+
+do_f(Parent, Fun, I) ->
+    Parent ! {self(), (catch Fun(I))}.
+
 
 %%%
 %% Core translation
