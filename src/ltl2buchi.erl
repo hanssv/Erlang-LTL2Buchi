@@ -341,7 +341,7 @@ merge(N1 = #node{old = Old1, accepting = Acc1},
 
 update_fulfilled_obligations(N = #node{origphi = Phi, eventualites = Evs},Form) ->
 	Untils = get_untils(Phi),
-	UntilRHS = lists:map(fun({_,_,X}) -> X end,Untils),
+	UntilRHS = [ X || {until,_,X} <- Untils ],
 	case lists:member(Form,UntilRHS) of
 		true -> N#node{eventualites = set_add(Evs,[Form])};
 		false -> N
@@ -393,7 +393,7 @@ optimize_acc_sets(NodeSet,SPhi) ->
 							   N1 /= N2,
 							   Set1 -- Set2 == [],
 							   (Set1 /= Set2 orelse N1 > N2)],
-			Acs = lists:map(fun({_,X}) -> X end,AcMap),
+			Acs = [ X || {_,X} <- AcMap ],
 			NewAcMap = lists:zip(Acs -- ToRemove, safe_seq(1,length(Acs -- ToRemove))),
 			prt_debug(5,"opt: ~p\n",[{AcMap,ToRemove,NewAcMap}]),
 			NS = [N#node{accepting = lists:sort([proplists:get_value(A,NewAcMap) 
