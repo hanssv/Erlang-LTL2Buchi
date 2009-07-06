@@ -6,6 +6,7 @@ all: tool tests doc
 
 src/ltl_parser.erl: src/ltl_parser.yrl
 	cd src; erl -noshell -run yecc file ltl_parser -run erlang halt
+	cd src; sed '1i%% @hidden' ltl_parser.erl > foo; mv foo ltl_parser.erl
 
 tool: 	src/ltl_parser.erl
 	cd ebin; $(EMAKE)
@@ -22,4 +23,6 @@ tests_clean:
 doc: tool 
 	echo "Building documentation in ./edoc"
 	erl -noshell -eval "edoc:application('ltl2buchi',\".\",[{exclude_packages,[ltl_parser]}])" -s init stop 
-	iconv -f LATIN1 -t UTF-8 doc/overview-summary.html > tmp; mv tmp doc/overview-summary.html
+#	cp doc/overview-summary.html /tmp/tmp.html
+	@cd doc; iconv -f LATIN1 -t UTF8 overview-summary.html > tmp; mv tmp overview-summary.html
+	@cd doc; sed -e 's/Ã¼/ü/g' overview-summary.html > tmp; mv tmp overview-summary.html
