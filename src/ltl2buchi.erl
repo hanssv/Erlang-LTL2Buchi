@@ -66,7 +66,7 @@ translate(Phi) ->
 %% @spec (ltl_formula()) -> buchi_automaton()
 translate_norew(Phi) ->
 	Bs = ltl2buchi(Phi),
-	OptBs = lists:map(fun buchi_reduce:reduce/1,Bs),
+	OptBs = pmap(fun buchi_reduce:reduce/1,Bs),
 	_OptB = pick_smallest(OptBs).
 
 %%% Pick the best!
@@ -75,6 +75,25 @@ pick_smallest(Bs) ->
 		 fun(B1,B2) ->
 				 buchi_utils:size_of(B1) < buchi_utils:size_of(B2)
 		 end,Bs)).
+
+%%% Simple pmap implementation
+pmap(Fun, L) ->
+    S = self(),
+    Pids = lists:map(fun(I) ->
+                         spawn(fun() -> do_f(S, Fun, I) end)
+                     end, L),
+    gather(Pids).
+
+gather([H|T]) ->
+    receive
+        {H, Ret} -> [Ret|gather(T)]
+    end;
+gather([]) ->
+    [].
+
+do_f(Parent, Fun, I) ->
+    Parent ! {self(), (catch Fun(I))}.
+
 
 %%%
 %% Core translation
@@ -322,7 +341,7 @@ merge(N1 = #node{old = Old1, accepting = Acc1},
 
 update_fulfilled_obligations(N = #node{origphi = Phi, eventualites = Evs},Form) ->
 	Untils = get_untils(Phi),
-	UntilRHS = lists:map(fun({_,_,X}) -> X end,Untils),
+	UntilRHS = [ X || {until,_,X} <- Untils ],
 	case lists:member(Form,UntilRHS) of
 		true -> N#node{eventualites = set_add(Evs,[Form])};
 		false -> N
@@ -374,7 +393,7 @@ optimize_acc_sets(NodeSet,SPhi) ->
 							   N1 /= N2,
 							   Set1 -- Set2 == [],
 							   (Set1 /= Set2 orelse N1 > N2)],
-			Acs = lists:map(fun({_,X}) -> X end,AcMap),
+			Acs = [ X || {_,X} <- AcMap ],
 			NewAcMap = lists:zip(Acs -- ToRemove, safe_seq(1,length(Acs -- ToRemove))),
 			prt_debug(5,"opt: ~p\n",[{AcMap,ToRemove,NewAcMap}]),
 			NS = [N#node{accepting = lists:sort([proplists:get_value(A,NewAcMap) 
@@ -413,14 +432,16 @@ degeneralize_tgba(States,InitState,Trans) ->
  	Bss  = [ synch_product(Ds,Gs) || Ds <- Degs, Gs <- Gens],
    	lists:foreach(fun({S,_,T,_}) ->
    						  prt_debug(3,"1Buchi automata: ~p states ~p transitions\n",
-   									[length(S), length(T)])
+   									[length(S), length(T)]),
+   						  prt_debug(5,"1Buchi automata: ~p states ~p transitions\n",
+   									[S, T])					  
    				  end,Bss),
 
-  	Bss1  = [ buchi_reduce:reduce(B) || B <- Bss ],
-   	lists:foreach(fun({S,_,T,_}) ->
-   						  prt_debug(3,"2Buchi automata: ~p states ~p transitions\n",
-   									[length(S), length(T)])
-   				  end,Bss1),
+%%   	Bss1  = [ buchi_reduce:reduce(B) || B <- Bss ],
+%%    	lists:foreach(fun({S,_,T,_}) ->
+%%    						  prt_debug(3,"2Buchi automata: ~p states ~p transitions\n",
+%%    									[length(S), length(T)])
+%%    				  end,Bss1),
 	Bss.
 
 synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}) ->
@@ -433,7 +454,7 @@ synch_product({States1,InitStates1,Trans1, Accept1},{States2,InitStates2,Trans2}
 				T1 <- States1],
 	Accept = [ {A,S} || A <- Accept1,
 						S <- States2],
-    Reachable = lists:usort(buchi_utils:reachable(InitStates,Trans)),
+    Reachable = lists:usort(buchi_utils:reachable(Trans,InitStates)),
 	Trans_ = [Tr || Tr = {S1,_,_} <- Trans, lists:member(S1,Reachable)],
  	prt_debug(5,"Trans: ~p\nReach: ~p\n",[Trans_,Reachable]), 
 	case Reachable of

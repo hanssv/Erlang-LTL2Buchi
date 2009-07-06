@@ -4,13 +4,14 @@ default: tool
 
 all: tool tests doc
 
-tool:
-	cd src; erl -noshell -eval "yecc:yecc(\"ltl_parser.yrl\", \"ltl_parser.erl\")" -s init stop
-	cd src; sed '1i%% @hidden' ltl_parser.erl > foo; mv foo ltl_parser.erl
+src/ltl_parser.erl: src/ltl_parser.yrl
+	cd src; erl -noshell -run yecc file ltl_parser -run erlang halt
+
+tool: 	src/ltl_parser.erl
 	cd ebin; $(EMAKE)
 
 clean:
-	cd ebin; rm -f *.beam
+	cd ebin; rm -f *.beam ../src/ltl_parser.erl
 
 tests:
 	cd test; $(EMAKE)
