@@ -27,15 +27,15 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc LTL-to-Buchi translation.
+%% @doc LTL-to-Büchi translation.
 %% The core translation algorithm implemented in this module is described
 %% in the report
 %% <a href="http://ti.arc.nasa.gov/m/profile/dimitra/publications/forte02.pdf">
 %% From States to Transitions: Improving translation of
-%% LTL formulae to Buchi automata</a> by Giannakopoulou and Lerda.
+%% LTL formulae to Büchi automata</a> by Giannakopoulou and Lerda.
 %%
-%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
-%% @todo Use digraphs for representing Buchi automata.
+%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
+%% @todo Use digraphs for representing Büchi automata.
 
 -module(ltl2buchi).
 
@@ -54,13 +54,13 @@
 
 -define(DEBUG,0).
 
-%% @doc Translate an LTL expression to a Buchi automaton.
+%% @doc Translate an LTL expression to a Büchi automaton.
 %% @spec (ltl_formula()) -> buchi_automaton()
 translate(Phi) ->
 	RPhi = ltl_rewrite:rewrite(Phi),
 	translate_norew(RPhi).
 
-%% @doc Translate an LTL expression to a Buchi automaton.
+%% @doc Translate an LTL expression to a Büchi automaton.
 %% Does not use the rewrite heuristics in {@link ltl_rewrite}.
 %% @see translate/1.
 %% @spec (ltl_formula()) -> buchi_automaton()

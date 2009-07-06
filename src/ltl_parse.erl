@@ -27,7 +27,6 @@
 -module(ltl_parse).
 -export([string/1]).
 
-%% @hidden
 
 -include_lib("eunit/include/eunit.hrl").
 

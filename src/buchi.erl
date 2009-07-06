@@ -26,10 +26,10 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module defining Buchi automata
+%% @doc Module defining Büchi automata
 %%
-%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
-%% @todo Use digraphs for representing Buchi automata.
+%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
+%% @todo Use digraphs for representing Büchi automata.
 
 -module(buchi).
 
@@ -72,11 +72,11 @@
 -type(buchi() :: labeled_buchi() | non_labeled_buchi()).
 
 %%
-%% Buchi recognizers
+%% Büchi recognizers
 %%
 %% True if the BA has its labels in the states
 -spec(is_labeled/1::(buchi())->bool()).
-%% @doc Recognize labelled Buchi automaton.
+%% @doc Recognize labelled Büchi automaton.
 %% @spec (buchi_automaton()) -> bool()
 is_labeled({_,_,[{_,_} | _],_}) ->
     true;
@@ -88,7 +88,7 @@ is_labeled(_) ->
     false.
 
 -spec(is_nonlabeled/1::(buchi())->bool()).
-%% @doc Recognize non-labeled Buchi automaton.
+%% @doc Recognize non-labeled Büchi automaton.
 %% @spec (buchi_automaton()) -> bool()
 is_nonlabeled({_,_,[{_,_,_} | _],_}) ->
     true;
@@ -101,7 +101,7 @@ is_nonlabeled(_) ->
 
 %% True if The BA is generalized
 -spec(is_generalized/1::(buchi())->bool()).
-%% @doc Recognize generalized Buchi automaton.
+%% @doc Recognize generalized Büchi automaton.
 %% @spec (buchi_automaton()) -> bool()
 is_generalized({_,_,_,[Ac | _]}) ->
     is_list(Ac);
@@ -114,18 +114,18 @@ is_generalized(_) ->
 
 %% The empty BA
 -spec(empty_buchi/0::()->(non_labeled_buchi())).
-%% @doc The empty non-labeled Buchi automaton.
+%% @doc The empty non-labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
 empty_buchi() -> {[1],[1],[],[]}.
 
 -spec(empty_labeled_buchi/0::()->(labeled_buchi())).
-%% @doc The empty labeled Buchi automaton.
+%% @doc The empty labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
 empty_labeled_buchi() -> {[],[],[],[]}.
 
 %% Empty check
 -spec(is_empty/1::(buchi())->bool()).
-%% @doc Check Buchi automaton for emptiness.
+%% @doc Check Büchi automaton for emptiness.
 %% @spec (buchi_automaton()) -> bool()
 is_empty(B = {_States,_InitStates,_Trans,_Accept}) ->
     case reachable_loop_states(B) of
@@ -146,7 +146,7 @@ reachable_loop_states(B = {_States,InitStates,_Trans,Accept}) ->
 
 
 -spec(intersection/2::(buchi(),buchi())->non_lbl_buchi()).
-%% @doc Intersection of two Buchi automata.
+%% @doc Intersection of two Büchi automata.
 %% Computes the product/intersection of two BA's,
 %% the result is a non-generalized, non-labeled BA.
 %% @spec (buchi_automaton(),buchi_automaton()) -> buchi_automaton()
@@ -194,8 +194,8 @@ intersection2(_B1 = {_States1, InitStates1, Trans1, Accept1},
 	  {States, InitStates, Trans, Accept}
     end.
 
-%% @doc LTL intersection of Buchi automaton and LTL 
-%% formula translated to Buchi automaton. 
+%% @doc LTL intersection of Büchi automaton and LTL 
+%% formula translated to Büchi automaton. 
 %% The first BA is a System model (or an automata generated
 %% from a witness) and the second BA is generated from an 
 %% LTL formula. Maybe this operation has a better name!??
@@ -265,7 +265,7 @@ make_unlabeled(B) ->
 	  B
     end.
 
-%% @doc Translate labeled Buchi automaton into non-labeled.
+%% @doc Translate labeled Büchi automaton into non-labeled.
 %% @spec (buchi_automaton()) -> buchi_automaton()
 lbl2nonlbl({[],_InitStates,_Trans,_Accepts}) ->
     {[1],[1],[],[]};
@@ -302,7 +302,7 @@ lbl2nonlbl(B = {States,InitStates,Trans,Accepts}) ->
 %%     end.	
 
 %% generalized_buchi() -> buchi()
-%% @doc Translate generalized Buchi automaton into non-generalized.
+%% @doc Translate generalized Büchi automaton into non-generalized.
 %% @spec (buchi_automaton()) -> buchi_automaton()
 degeneralize(B) ->
     degeneralize2(make_unlabeled(B)).
@@ -383,7 +383,7 @@ remove_subsets1([Set | Sets],Sets2) ->
 
 
 %% Build buichi-digraph
-%% @doc Translate  Buchi automaton into digraph.
+%% @doc Translate  Büchi automaton into digraph.
 %% @see //stdlib/digraph. digraph
 %% @spec (buchi_automaton()) -> digraph()
 buchi2digraph(B = {States, _InitStates, Trans, Accept}) ->

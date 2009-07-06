@@ -46,7 +46,7 @@
 %% Pre-translation rewriting of LTL formula in the
 %% spirit of Wring. The rewrite rules used are listed below, 
 %% the list of rules is heuristically found to reduce the
-%% size of the Buchi automaton resulting from translation
+%% size of the Büchi automaton resulting from translation
 %% of the LTL expression.
 %% <br/>
 %% List of formulas (p, q, and r are arbitrary LTL formulas):<br/>

@@ -26,11 +26,11 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module for reduction of Buchi automata.
+%% @doc Module for reduction of Büchi automata.
 %% Exports a general <em>reduce</em> function, which is a collection
-%% of various reduction techniques for Buchi automata.
+%% of various reduction techniques for Büchi automata.
 %%
-%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
+%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
 %% @todo Export a more general reduce (with options!?)
 
 -module(buchi_reduce).
@@ -48,7 +48,7 @@
 
 -export([expand_accept/1, remove_unnecessary_states/1]).
 
-%% @doc Reductions and optimization of Buchi-automaton
+%% @doc Reductions and optimization of Büchi-automaton
 %% @spec  (buchi_automaton()) -> buchi_automaton()
 reduce(B) ->
 	reduce1(normalize_trans(B)).

@@ -26,23 +26,23 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module containing utility functions for Buchi automata
+%% @doc Module containing utility functions for Büchi automata
 %%
-%% @type buchi_automaton(). A tuple structure representing a Buchi automaton.
-%% @todo Use digraphs for representing Buchi automata.
+%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
+%% @todo Use digraphs for representing Büchi automata.
 
 -module(buchi_utils).
 
 -export([size_of/1, reachable/1, reachable/2]).
 
-%% @doc Size of Buchi automaton.
+%% @doc Size of Büchi automaton.
 %% Returns a (bad) measure of the size of the BA
 %% @spec (buchi_automaton()) -> int()
 size_of({States,_InitStates,Trans,_Accepts}) ->
     length(States) + length(Trans).
 
 %% A dfs...
-%% @doc Return all reachable states of Buchi automaton.
+%% @doc Return all reachable states of Büchi automaton.
 %% Does a depth first traversal of the automaton.
 %% @spec (buchi_automaton()) -> [state()]
 reachable(_B = {_States,InitStates,Trans,_Accept}) ->
