@@ -2,6 +2,6 @@
 @copyright 2009 Hans Svensson
 @version 0.9
 @title LTL-to-Büchi translator
-@doc An Erlang implementation of an LTL-to-Büchi translator
-Yada yada...
+@doc An Erlang implementation of an LTL-to-Büchi translator.
+Yada yada...    
 @end
