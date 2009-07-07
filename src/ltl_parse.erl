@@ -24,17 +24,27 @@
 %% OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 %% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+%% @author Hans Svensson <hanssv@chalmers.se>
+%% @copyright 2009, Hans Svensson
+
+%% @doc Parse LTL strings. A reference implementation of a parser for
+%% LTL expressions. Only implements the ltl_parse:string function that
+%% parses a string. Uses yecc for the actual parsning, see
+%% ltl_parser.yrl. Can be extended and/or replaced to suit special needs
+%% for an example of this, see <A
+%% HREF="https://babel.ls.fi.upm.es/trac/McErlang/">McErlang</A>
 -module(ltl_parse).
 -export([string/1]).
 
-
 -include_lib("eunit/include/eunit.hrl").
 
+%% @doc Parse a string containing an LTL expression.
+%% @spec (string()) -> ltl_formula()
 string(S) ->
     {ok, Toks, _} = erl_scan:string(S),
     %%   io:format("Tokens: ~p\n",[Ts]),
     LtlToks = ltl_scan(Toks),
-    io:format("LtlTokens: ~p\n", [LtlToks]),
+    %% io:format("LtlTokens: ~p\n", [LtlToks]),
     {ok, Res} = ltl_parser:parse(LtlToks),
     Res.
 
