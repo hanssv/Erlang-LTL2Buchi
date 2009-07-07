@@ -24,6 +24,8 @@
 %% OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 %% ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+%% @hidden
+
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
 %% @doc Module defining Büchi automata
@@ -33,82 +35,15 @@
 
 -module(buchi_digraph).
 
--export([is_labeled/1,is_nonlabeled/1,is_generalized/1,
-		 is_empty/1,intersection/2, lbl2nonlbl/1, 
-		 empty_buchi/0,empty_labeled_buchi/0,
-		 reachable_loop_states/1, ltl_intersection/2, 
-		 buchi2digraph/1,remove_subsets/1,
-		 degeneralize/1, sccs/1]).
+-export([is_buchi/1,
+		 empty_buchi/0,
+		 is_empty/1,
+		 intersection/2, 
+		 ltl_intersection/2, 
+		 buchi2digraph/1]).
 
 -include("buchi.hrl").
 
-%% General types
--type(literal() :: {lprop,any()} | {lnot,{lprop,any()}}).
--type(label()   :: [literal()]).
-
--type(state()   :: integer()).
--type(lbl_state() :: {state(),label()}).
-
--type(states()    :: [state()]).
--type(lbl_states() :: [lbl_state()]).
-
--type(transition() :: {state(),state()}).
--type(transitions() :: [transition()]).
--type(lbl_transition() :: {state(),state(),label()}).
--type(lbl_transitions() :: [lbl_transition()]).
-
--type(accepts()     :: states()).
--type(gen_accepts() :: [accepts()]).
-
--type(gen_lbl_buchi() :: {lbl_states(),states(),transitions(),gen_accepts()}).
--type(lbl_buchi() :: {lbl_states(),states(),transitions(),accepts()}).
--type(gen_non_lbl_buchi() :: {states(),states(),lbl_transitions(),gen_accepts()}).
--type(non_lbl_buchi() :: {states(),states(),lbl_transitions(),accepts()}).
-
-%-type(gen_buchi() :: gen_lbl_buchi() | gen_non_lbl_buchi()).
-%-type(non_gen_buchi() :: lbl_buchi() | non_lbl_buchi()).
-
--type(labeled_buchi() :: gen_lbl_buchi() | lbl_buchi()).
--type(non_labeled_buchi() :: gen_non_lbl_buchi() | non_lbl_buchi()).
-
--type(buchi() :: labeled_buchi() | non_labeled_buchi()).
-
-%%
-%% Büchi recognizers
-%%
-%% True if the BA has its labels in the states
--spec(is_labeled/1::(buchi())->bool()).
-%% @doc Recognize labelled Büchi automaton.
-%% @spec (buchi_automaton()) -> bool()
-is_labeled({_,_,[{_,_} | _],_}) ->
-    true;
-is_labeled({[{_,_} | _],_,_,_}) ->
-    true;
-is_labeled({[],_,[],_}) ->
-    true;
-is_labeled(_) ->
-    false.
-
--spec(is_nonlabeled/1::(buchi())->bool()).
-%% @doc Recognize non-labeled Büchi automaton.
-%% @spec (buchi_automaton()) -> bool()
-is_nonlabeled({_,_,[{_,_,_} | _],_}) ->
-    true;
-is_nonlabeled({[X|_],_,[],_}) when is_integer(X) ->
-    true;
-is_nonlabeled({[],_,[],_}) ->
-    true;
-is_nonlabeled(_) ->
-    false.
-
-%% True if The BA is generalized
--spec(is_generalized/1::(buchi())->bool()).
-%% @doc Recognize generalized Büchi automaton.
-%% @spec (buchi_automaton()) -> bool()
-is_generalized({_,_,_,[Ac | _]}) ->
-    is_list(Ac);
-is_generalized(_) ->
-    false.
 
 %%
 %% Convenience functions
@@ -144,21 +79,18 @@ is_accept_state(G,V) ->
 %%
 
 %% The empty BA
--spec(empty_buchi/0::()->(non_labeled_buchi())).
 %% @doc The empty non-labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
 empty_buchi() -> 
 	new_buchi().
 
 
--spec(empty_labeled_buchi/0::()->(labeled_buchi())).
 %% @doc The empty labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
 empty_labeled_buchi() ->
 	new_labeled_buchi().
 
 %% Empty check
--spec(is_empty/1::(buchi())->bool()).
 %% @doc Check Büchi automaton for emptiness.
 %% @spec (buchi_automaton()) -> bool()
 is_empty(B) ->
@@ -167,7 +99,6 @@ is_empty(B) ->
 		_ -> false
     end.
 
--spec(reachable_loop_states/1::(buchi())->states()).
 %% @private
 reachable_loop_states(B = #buchi{automaton = G}) ->
     Reachable = digraph_utils:reachable(init_states(B),G),
@@ -177,7 +108,6 @@ reachable_loop_states(B = #buchi{automaton = G}) ->
 	Res.
 
 
--spec(intersection/2::(buchi(),buchi())->non_lbl_buchi()).
 %% @doc Intersection of two Büchi automata.
 %% Computes the product/intersection of two BA's,
 %% the result is a non-generalized, non-labeled BA.
@@ -232,7 +162,6 @@ intersection2(_B1 = {_States1, InitStates1, Trans1, Accept1},
 %% from a witness) and the second BA is generated from an 
 %% LTL formula. Maybe this operation has a better name!??
 %% @spec (buchi_automaton(),buchi_automaton()) -> buchi_automaton()
--spec(ltl_intersection/2::(buchi(),buchi())->non_lbl_buchi()).
 ltl_intersection(B1,B2) ->
     ltl_intersection2(degeneralize(B1),degeneralize(B2)).
 

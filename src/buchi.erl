@@ -26,14 +26,14 @@
 
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
-%% @doc Module defining Büchi automata
+%% @doc Module defining (non-labeled and non-generalized) Büchi automata
 %%
 %% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
 %% @todo Use digraphs for representing Büchi automata.
 
 -module(buchi).
 
--export([is_buchi/1
+-export([is_buchi/1,
 		 empty_buchi/0,
 		 is_empty/1,
 		 intersection/2, 
