@@ -43,7 +43,7 @@
 -define(BUCHI_IMPL,buchi_tuple).
 
 
-%% True if the BA has its labels in the states
+%% True if it is a proper non-labeled and non-generalized Büchi automaton
 %% @doc Recognize labelled Büchi automaton.
 %% @spec (buchi_automaton()) -> bool()
 is_buchi(B) -> ?BUCHI_IMPL:is_buchi(B).
