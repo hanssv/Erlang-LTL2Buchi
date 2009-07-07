@@ -35,7 +35,7 @@
 
 translate(Phi) ->
 	B0 = simple_to_buchi(Phi),
-    buchi:degeneralize(buchi:lbl2nonlbl(B0)).
+    basic_ltl2buchi:degeneralize(basic_ltl2buchi:lbl2nonlbl(B0)).
 
 %% Simple BA production using covers (No paper..)
 simple_covers([],Cvs) ->

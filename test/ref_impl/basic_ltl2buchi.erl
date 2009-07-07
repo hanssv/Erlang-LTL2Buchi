@@ -35,7 +35,7 @@
 
 translate(Phi) ->
 	B0 = basic_ltl_to_buchi(Phi),
-    buchi:degeneralize(buchi:lbl2nonlbl(B0)).
+    degeneralize(lbl2nonlbl(B0)).
 
 %% Recognizers for some ltl-formulas
 is_until({until,_,_}) -> true;
@@ -262,3 +262,159 @@ trans_states(STab,SS) ->
 					  [{_,X,_}] = ets:lookup(STab,S),
 					  X
 			  end,SS).
+
+%%%
+%% Some more general functions handling generalized/labeled BA
+%%%
+
+
+%%
+%% Büchi recognizers
+%%
+
+%% True if the BA has its labels in the states
+is_labeled({_,_,[{_,_} | _],_}) ->
+    true;
+is_labeled({[{_,_} | _],_,_,_}) ->
+    true;
+is_labeled({[],_,[],_}) ->
+    true;
+is_labeled(_) ->
+    false.
+
+is_nonlabeled({_,_,[{_,_,_} | _],_}) ->
+    true;
+is_nonlabeled({[X|_],_,[],_}) when is_integer(X) ->
+    true;
+is_nonlabeled({[],_,[],_}) ->
+    true;
+is_nonlabeled(_) ->
+    false.
+
+%% True if The BA is generalized
+is_generalized({_,_,_,[Ac | _]}) ->
+    is_list(Ac);
+is_generalized(_) ->
+    false.
+
+%% generalized_buchi() -> buchi()
+%% @doc Translate generalized Büchi automaton into non-generalized.
+%% @spec (buchi_automaton()) -> buchi_automaton()
+degeneralize(B) ->
+    degeneralize2(make_unlabeled(B)).
+degeneralize2(B = {States,InitStates,Trans,Accepts}) ->
+    case is_generalized(B) of
+		false -> B;
+		true ->
+			case length(Accepts) of
+				1 -> {States,InitStates,Trans,hd(Accepts)};
+				_ ->	 
+					Accepts1 = remove_subsets(Accepts),
+					%% 		io:format("Accpts: ~p\nAccepts1: ~p\n",[Accepts,Accepts1]),
+					Trans1 = degen_trans(Trans,length(States),length(Accepts1),Accepts1),
+					Reachable = lists:usort(buchi_utils:reachable(Trans1,InitStates)),
+					Trans2 = [{S1,S2,St} || {S1,S2,St} <- Trans1, lists:member(S1,Reachable)],
+					Accept = [S || S <- hd(Accepts1),lists:member(S,Reachable)],
+					StMap = lists:zip(lists:seq(1,length(Reachable)),Reachable),
+					Trans3 = lists:map(
+							   fun({S1,S2,St}) -> 
+									   {stmap(S1,StMap),stmap(S2,StMap),St} 
+							   end,Trans2),
+					States1 = [ New || {New,_Old} <- StMap],
+					InitStates1 = lists:map(fun(S) -> stmap(S,StMap) end,InitStates),
+					Accept1 = lists:map(fun(S) -> stmap(S,StMap) end,Accept),
+					{States1,InitStates1,Trans3,Accept1}
+			end
+	end.
+
+stmap(N, Ns) ->
+    case lists:keysearch(N, 2, Ns) of {value, {N2, N}} -> N2 end.
+
+
+offset(S,Ns) ->
+    case S rem Ns of
+		0 -> Ns;
+		X -> X
+    end.
+
+degen_trans(Trans, NStates, NCopies, Accepts) ->
+    %% 'Loops' can be combined, lists:member can only match some transitions...
+    Trans1 = [{N * NStates + S1, N * NStates + S2, St}
+	      || {S1, S2, St} <- Trans,
+		 N <- lists:seq(0, NCopies - 1)],
+    %% 	io:format("Trans1: ~p\n",[Trans1]),
+    lists:foldl(fun ({N, F}, Ts) ->
+			F2 = lists:map(fun (X) -> X + NStates * N end, F),
+			%% 					 io:format("F2: ~p\n",[F2]),
+			lists:map(fun ({S1, S2, St}) ->
+					  case lists:member(S1, F2) of
+					    true ->
+						{S1, offset(S2, NStates) + NStates * ((N + 1) rem NCopies), St};
+					    false ->
+						{S1, S2, St}
+					  end
+				  end, Ts)
+		end, Trans1, lists:zip(lists:seq(0, NCopies - 1), Accepts)).
+
+%% @private
+remove_subsets(Lists) ->
+	lists:map(fun sets:to_list/1,
+			  remove_subsets1(lists:map(fun sets:from_list/1,Lists),[])).
+
+remove_subsets1([],Sets) ->
+	Sets;
+remove_subsets1([Set | Sets],Sets2) ->
+	case sets:to_list(Set) == [] of
+		true -> remove_subsets1(Sets,[Set | Sets2]);
+		false ->
+			case not lists:any(fun(X) -> X end,
+							   lists:map(fun(X) -> sets:is_subset(X,Set) end,Sets ++ Sets2)) of
+				true  -> remove_subsets1(Sets,[Set | Sets2]);
+				false -> remove_subsets1(Sets,Sets2)
+			end
+	end.
+
+make_unlabeled(B) ->
+    case is_labeled(B) andalso not is_nonlabeled(B) of
+      true ->
+	  io:format("*WARNING*: Changed buchi automata from labeled into non-labeled!!\n"),
+	  lbl2nonlbl(B);
+      false ->
+	  B
+    end.
+
+%% @doc Translate labeled Büchi automaton into non-labeled.
+%% @spec (buchi_automaton()) -> buchi_automaton()
+lbl2nonlbl({[],_InitStates,_Trans,_Accepts}) ->
+    {[1],[1],[],[]};
+lbl2nonlbl(B = {States,InitStates,Trans,Accepts}) ->
+    case is_labeled(B) of
+		true -> 
+			NewStates = [1 | [ S+1 || {S,_} <- States]],
+			NewTrans = [{S1+1,S2+1,element(2,lists:nth(S2,States))} || {S1,S2} <- Trans] ++
+				[{1,S+1,element(2,lists:nth(S,States))} || S <- InitStates],
+			NewAccepts = case is_generalized(B) of
+							 true -> [ [ S+1 || S <- SS] || SS <- Accepts];
+							 false -> [ S+1 || S <- Accepts ]
+						 end,
+			{NewStates,[1],lists:usort(NewTrans),NewAccepts};
+		false ->
+			B
+    end.
+
+%% non-labeled to labeled translation
+%% Doesn't make sense really...
+%% nonlbl2lbl(B = {_States,_InitStates,Trans,Accepts}) ->
+%%     case is_nonlabeled(B) of
+%% 	true -> 
+%% 	    NewInitStates = [S-1 || {1,S,_} <- Trans ],
+%% 	    NewStates = lists:usort([{S-1,St} || {_,S,St} <- Trans ]),
+%% 	    NewTrans = [{S1-1,S2-1} || {S1,S2,_} <- Trans, S1 > 1],
+%% 	    NewAccepts = case is_generalized(B) of
+%% 			     true -> [ [ S-1 || S <- SS, S > 1] || SS <- Accepts];
+%% 			     false -> [ S-1 || S <- Accepts, S > 1 ]
+%% 			 end,
+%% 	    {NewStates,NewInitStates,lists:usort(NewTrans),NewAccepts};
+%% 	false -> 
+%% 	    B
+%%     end.	

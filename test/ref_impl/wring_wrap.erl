@@ -88,8 +88,8 @@ parse_res(Str) ->
 	B1 = mk_buchi(lists:sort(parse_states(States)),
 				  lists:sort(parse_arcs(Arcs)),
 				  lists:map(fun lists:sort/1,parse_fairsets(FairS))),
-	buchi:degeneralize(
-	  buchi:lbl2nonlbl(B1)).
+	basic_ltl2buchi:degeneralize(
+	  basic_ltl2buchi:lbl2nonlbl(B1)).
 
 parse_states([]) ->
 	[];
