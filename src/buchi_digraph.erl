@@ -73,7 +73,14 @@ is_accept_state(B,V) ->
 %% @doc Recognize labelled Büchi automaton.
 %% @spec (buchi_automaton()) -> bool()
 is_buchi(B) -> 
-
+	case B of
+		{graph,_Id1,_Id2,_Id3,true} ->
+			case digraph:info(B) of
+				[{cyclicity,cyclic},_,_] -> true;
+				_ -> false
+			end;
+		_ -> false
+	end.		 	
 
 %% @doc The empty non-labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
