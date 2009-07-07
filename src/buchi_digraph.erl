@@ -42,43 +42,39 @@
 		 ltl_intersection/2, 
 		 buchi2digraph/1]).
 
--include("buchi.hrl").
-
-
 %%
 %% Convenience functions
 %%
 
 new_buchi() ->
-	#buchi{type = normal, automaton = digraph:new()}.
+	digraph:new().
 
-new_labeled_buchi() ->
-	#buchi{type = labeled, automaton = digraph:new()}.
+init_states(B) ->
+	[ V || V <- digraph:vertices(B),
+		   is_init_state(B,V)].
 
-buchi_dg(#buchi{automaton = G}) ->
-	G.
-
-init_states(#buchi{automaton = G}) ->
-	[ V || V <- digraph:vertices(G),
-		   is_init_state(G,V)].
-
-is_init_state(G,V) ->
-	{V,Label} = digraph:vertex(G,V),
+is_init_state(B,V) ->
+	{V,Label} = digraph:vertex(B,V),
 	lists:member(initial,Label).
 
-accept_states(#buchi{automaton = G}) ->
-	[ V || V <- digraph:vertices(G),
-		   is_accept_state(G,V)].
+accept_states(B) ->
+	[ V || V <- digraph:vertices(B),
+		   is_accept_state(B,V)].
 
-is_accept_state(G,V) ->
-	{V,Label} = digraph:vertex(G,V),
+is_accept_state(B,V) ->
+	{V,Label} = digraph:vertex(B,V),
 	lists:member(accepting,Label).
 
 %%
 %% Main functions on BA
 %%
 
-%% The empty BA
+%% True if it is a proper non-labeled and non-generalized Büchi automaton
+%% @doc Recognize labelled Büchi automaton.
+%% @spec (buchi_automaton()) -> bool()
+is_buchi(B) -> 
+
+
 %% @doc The empty non-labeled Büchi automaton.
 %% @spec () -> buchi_automaton()
 empty_buchi() -> 
@@ -100,11 +96,11 @@ is_empty(B) ->
     end.
 
 %% @private
-reachable_loop_states(B = #buchi{automaton = G}) ->
-    Reachable = digraph_utils:reachable(init_states(B),G),
+reachable_loop_states(B) ->
+    Reachable = digraph_utils:reachable(init_states(B),B),
     Res = [ V || V <- accept_states(B),
 				 lists:member(V,Reachable),
-				 digraph:get_cycle(G,V) /= false],
+				 digraph:get_cycle(B,V) /= false],
 	Res.
 
 
