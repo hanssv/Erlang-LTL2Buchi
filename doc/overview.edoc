@@ -2,6 +2,123 @@
 @copyright 2009 Hans Svensson
 @version 0.9
 @title LTL-to-Büchi translator
-@doc An Erlang implementation of an LTL-to-Büchi translator.
-Yada yada...    
+
+@doc <EM>The main component of this package is an Erlang implementation of
+an LTL-to-Büchi translator. In addition there is also a reference
+implementation of a parser, some modules that handles LTL expressions
+and some modules that handles Büchi automata.</EM>
+
+<B>[Erlang Workshop Paper - PLACEHOLDER]</B>
+
+==Usage==
+
+The main module is <A HREF="ltl2buchi.html">
+<CODE>ltl2buchi</CODE></A>, and its main function is
+<CODE>translate</CODE>. <CODE>ltl2buchi:translate</CODE> takes as
+input an LTL expression; either defined in terms of constructors from
+the <A HREF="ltl.html"> <CODE>ltl</CODE></A> module, or constructed by
+parsing a string using <A
+HREF="ltl_parse.html"><CODE>ltl_parse</CODE></A><CODE>:string</CODE>
+(see the respective modules for details). The result of
+<CODE>ltl2buchi:translate</CODE> is Büchi automaton optimized for
+size. The representation of Büchi automata is described in <A
+HREF="buchi.html"><code>buchi</code></A>.
+
+===Examples===
+<B>TO BE INSERTED</B>
+
+==Background==
+
+The first (non-public) versions of <A
+HREF="https://babel.ls.fi.upm.es/trac/McErlang/">McErlang</A> encoded
+correctness properties (specifications) as simple automata programmed
+directly in Erlang. Having limited support for higher level
+constructs, writing properties was both tedious and error prone. For
+more complex properties (such as <EM>fairness</EM> properties)
+McErlang also supported Büchi automata, but they also needed be hand
+written.
+
+To make McErlang more accessible before its first public release we
+wanted to simplify specification writing by adding the possibility of
+using LTL properties. This is fairly straightforward, since LTL
+expressions can be automatically translated into Büchi automata. For
+model checking to be efficient it is important to produce as small an
+automaton as possible. The obvious solution was to use an existing
+implementation. However, no Erlang implementation could be found and
+although it is a simple task to wrap an existing Java implementation
+it did not appeal to us aesthetically having advocated the
+all-in-Erlang aspect of McErlang. And also, from a distribution point
+of view it is simpler to have a native implementation; we avoid the
+licensing aspect as well as the problem of missing external
+components, while being in control of new releases and bug fixes. This
+made us decide to implement an LTL formula to Büchi automata in
+Erlang.
+
+==Technical details==
+
+Most modern (well performing) LTL-to-Büchi translator consist of the
+following three parts: 
+
+<UL>
+
+<LI> A rewrite engine, which aims to simplify the LTL formula. It
+  	 normally uses a fixed set of (heuristically chosen) rewrite
+  	 rules.</LI>
+
+<LI> Core translation algorithm -- Construction of the Büchi automaton
+	 from the re-written LTL formula. There are two main algorithms
+	 for this phase: the tableau-based algorithms, and algorithms
+	 based on <EM>alternating automata</EM>.</LI>
+
+<LI> If needed, a translation of the result in phase 2, into a
+  	 standard Büchi automaton. (Many translations works with
+  	 intermediate automata formats, such as <EM>generalized Büchi
+  	 automata</EM>, <EM>alternating automata</EM>,
+  	 <EM>transition-based Büchi automata</EM>, etc.) Thereafter,
+  	 reductions and optimizations, such as <EM>simulation
+  	 reductions</EM> and removal of <EM>non-reachable</EM> and
+  	 <EM>non-accepting</EM> states, are applied to the Büchi
+  	 automaton.</LI>
+</UL>
+
+We have implemented a rewrite engine and uses roughly the same
+heuristics as Wring [<A
+HREF="overview-summary.html#references">1</A>]. The rules aim to
+simplify the LTL formula in a way that is (according to the
+heuristics) favorable in terms of the size of the resulting Büchi
+automaton.
+
+Our core translation algorithm is tableau-based, and follows closely
+to the implementation described in [<A
+HREF="overview-summary.html#references">2</A>]. The main reason for
+choosing a tableau-based algorithm was non-technical, we simply were
+more familiar with this style of algorithm.
+
+In automata theory there is a multitude of different reduction
+techniques and optimizations proposed. Some perform well on some
+structures, while others work best in completely different cases. We
+have chosen to implement some reduction algorithms that have proved
+useful for others, and we have particularly opted for algorithms that
+reduce the size of the automaton. Among the reductions implemented
+are: <EM>removal of unnecessary transitions</EM>, <EM>removal of
+non-reachable states</EM>, <EM>Bi-simulation reduction</EM>, and
+<EM>Strong fair simulation reduction</EM>[<A
+HREF="overview-summary.html#references">3</A>].
+
+==References==
+<A NAME="references"></A>
+[1] D. Giannakopoulou and F. Lerda. <EM>From States to Transitions:
+ Improving Translation of LTL Formulae to Büchi Automata</EM>,
+ FORTE '02: Proc. of the 22nd IFIP WG 6.1 International
+ Conference Houston on Formal Techniques for Networked and Distributed
+ Systems, p. 308-326, Springer-Verlag, 2002.
+
+[2] F. Somenzi and R. Bloem. <EM>Efficient Büchi Automata from LTL
+Formulae</EM>, CAV '00: Proc. of the 12th International Conference on
+Computer Aided Verification, p. 248-263, Springer-Verlag, 2000.
+
+[3] K. Etessami and G. Holzmann. <EM>Optimizing Büchi Automata</EM>,
+ CONCUR '00: Proc. of the 11th International Conference on
+ Concurrency Theory, p. 153-167, Springer-Verlag, 2000.
+
 @end
