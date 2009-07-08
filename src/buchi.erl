@@ -29,7 +29,6 @@
 %% @doc Module defining (non-labeled and non-generalized) Büchi automata
 %%
 %% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
-%% @todo Use digraphs for representing Büchi automata.
 
 -module(buchi).
 
@@ -40,29 +39,97 @@
 		 ltl_intersection/2, 
 		 buchi2digraph/1]).
 
--define(BUCHI_IMPL,buchi_tuple).
 
-
-%% True if it is a proper non-labeled and non-generalized Büchi automaton
-%% @doc Recognize labelled Büchi automaton.
+%% @doc Verifies the Büchi automaton data structure.
 %% @spec (buchi_automaton()) -> bool()
-is_buchi(B) -> ?BUCHI_IMPL:is_buchi(B).
+is_buchi({States,IStates,Trans,Accept}) 
+  when is_list(States), is_list(IStates), is_list(Trans), is_list(Accept) ->
+	Id = fun(X) -> X end,
+	lists:all(Id,[ is_integer(S) || S <- States]) andalso
+		lists:all(Id,[is_integer(S) || S <- IStates]) andalso
+		lists:all(Id,[is_tuple(T) andalso (tuple_size(T) == 3) || T <- Trans]) andalso
+		lists:all(Id,[is_integer(S) || S <- Accept]);
+is_buchi(_) -> false.
+	
 
-%% The empty BA
-%% @doc The empty non-labeled Büchi automaton.
+%% @doc The empty Büchi automaton.
 %% @spec () -> buchi_automaton()
-empty_buchi() -> ?BUCHI_IMPL:empty_buchi().
+empty_buchi() -> {[1],[1],[],[]}.
 
 %% Empty check
 %% @doc Check Büchi automaton for emptiness.
 %% @spec (buchi_automaton()) -> bool()
-is_empty(B) -> ?BUCHI_IMPL:is_empty(B).
+is_empty(B = {_States,_InitStates,_Trans,_Accept}) ->
+    case reachable_loop_states(B) of
+		[] -> true;
+		_ -> false
+    end.
+
+%% @private
+reachable_loop_states(B = {_States,InitStates,_Trans,Accept}) ->
+    {ok,G} = buchi2digraph(B),
+    Reachable = digraph_utils:reachable(InitStates,G),
+    Res = [ V || V <- Accept,
+				 lists:member(V,Reachable),
+				 digraph:get_cycle(G,V) /= false],
+	digraph:delete(G),
+	Res.
+
 
 %% @doc Intersection of two Büchi automata.
 %% Computes the product/intersection of two BA's,
 %% the result is a non-generalized, non-labeled BA.
 %% @spec (buchi_automaton(),buchi_automaton()) -> buchi_automaton()
-intersection(B1,B2) -> ?BUCHI_IMPL:intersection(B1,B2).
+intersection(B1,B2) ->
+	case is_buchi(B1) of
+		true -> 
+			case is_buchi(B2) of
+				true -> intersection2(B1,B2);
+				false -> erlang:error({not_a_buchi_automaton,B2})
+			end;
+		false -> erlang:error({not_a_buchi_automaton,B1})
+	end.
+
+intersection2(_B1 = {_States1, InitStates1, Trans1, Accept1},
+	      _B2 = {States2, InitStates2, Trans2, Accept2}) ->
+    AllInitStates =
+	[{S1, S2, 1} || S1 <- InitStates1, S2 <- InitStates2],
+    AllAccept =
+	[{F1, S2, 1} || F1 <- Accept1, S2 <- States2],
+    AllTrans =
+	[{{S1_1, S2_1, 1}, {S1_2, S2_2, 1}, St1}
+	 || {S1_1, S1_2, St1} <- Trans1,
+	    {S2_1, S2_2, St2} <- Trans2,
+	    St1 == St2,
+	    not lists:member(S1_1, Accept1)] ++
+	  [{{S1_1, S2_1, 1}, {S1_2, S2_2, 2}, St1}
+	   || {S1_1, S1_2, St1} <- Trans1,
+	      {S2_1, S2_2, St2} <- Trans2,
+	      St1 == St2,
+	      lists:member(S1_1, Accept1)] ++
+	    [{{S1_1, S2_1, 2}, {S1_2, S2_2, 2}, St1}
+	     || {S1_1, S1_2, St1} <- Trans1,
+		{S2_1, S2_2, St2} <- Trans2,
+		St1 == St2,
+		not lists:member(S2_1, Accept2)] ++
+	      [{{S1_1, S2_1, 2}, {S1_2, S2_2, 1}, St1}
+	       || {S1_1, S1_2, St1} <- Trans1,
+		  {S2_1, S2_2, St2} <- Trans2,
+		  St1 == St2,
+		  lists:member(S2_1, Accept2)],
+    Reachable = lists:usort(buchi_utils:reachable(AllTrans, AllInitStates)),
+    case Reachable of
+      [] -> {[], [], [], []};
+      _ ->
+	  StMap = lists:zip(lists:seq(1, length(Reachable)), Reachable),
+	  Trans = [{stmap(S1, StMap), stmap(S2, StMap), St} || {S1, S2, St} <- AllTrans,
+							       lists:member(S1, Reachable)],
+	  Accept = [stmap(S, StMap) || S <- AllAccept,
+				       lists:member(S, Reachable)],
+	  States = lists:seq(1, length(Reachable)),
+	  InitStates = [stmap(S, StMap) || S <- AllInitStates],
+	  {States, InitStates, Trans, Accept}
+    end.
 
 %% @doc LTL intersection of Büchi automaton and LTL 
 %% formula translated to Büchi automaton. 
@@ -70,10 +137,89 @@ intersection(B1,B2) -> ?BUCHI_IMPL:intersection(B1,B2).
 %% from a witness) and the second BA is generated from an 
 %% LTL formula. Maybe this operation has a better name!??
 %% @spec (buchi_automaton(),buchi_automaton()) -> buchi_automaton()
-ltl_intersection(B1,B2) -> ?BUCHI_IMPL:ltl_intersection(B1,B2).
+ltl_intersection(B1,B2) ->
+	case is_buchi(B1) of
+		true -> 
+			case is_buchi(B2) of
+				true -> ltl_intersection2(B1,B2);
+				false -> erlang:error({not_a_buchi_automaton,B2})
+			end;
+		false -> erlang:error({not_a_buchi_automaton,B1})
+	end.
+
+ltl_intersection2(_B1 = {_States1,InitStates1,Trans1,Accept1},
+				  _B2 = {States2,InitStates2,Trans2,Accept2}) ->
+    AllInitStates = 
+		[{S1,S2,1} || S1 <- InitStates1, S2 <- InitStates2],
+    AllAccept =
+		[{F1,S2,1} || F1 <- Accept1, S2 <- States2],
+    AllTrans = 
+		[ {{S1_1,S2_1,1},{S1_2,S2_2,1},St2} || 
+			{S1_1,S1_2,St1} <- Trans1, 
+			{S2_1,S2_2,St2} <- Trans2, 
+			is_sat(St2,St1),
+			not lists:member(S1_1,Accept1) ] ++
+		[ {{S1_1,S2_1,1},{S1_2,S2_2,2},St2} || 
+			{S1_1,S1_2,St1} <- Trans1, 
+			{S2_1,S2_2,St2} <- Trans2, 
+			is_sat(St2,St1),
+			lists:member(S1_1,Accept1) ] ++
+		[ {{S1_1,S2_1,2},{S1_2,S2_2,2},St2} || 
+			{S1_1,S1_2,St1} <- Trans1, 
+			{S2_1,S2_2,St2} <- Trans2, 
+			is_sat(St2,St1),
+			not lists:member(S2_1,Accept2) ] ++
+		[ {{S1_1,S2_1,2},{S1_2,S2_2,1},St2} || 
+			{S1_1,S1_2,St1} <- Trans1, 
+			{S2_1,S2_2,St2} <- Trans2, 
+			is_sat(St2,St1),
+			lists:member(S2_1,Accept2) ],
+    Reachable = lists:usort(buchi_utils:reachable(AllTrans,AllInitStates)),
+    case Reachable of
+		[] -> {[],[],[],[]};
+		_ ->
+			StMap = lists:zip(lists:seq(1,length(Reachable)),Reachable),
+			Trans = [{stmap(S1,StMap),stmap(S2,StMap),St} || {S1,S2,St} <- AllTrans,
+															 lists:member(S1,Reachable)],
+
+			Accept = [ stmap(S,StMap) || S <- AllAccept,
+										 lists:member(S,Reachable)],
+			States = lists:seq(1,length(Reachable)),
+			InitStates = [ stmap(S,StMap) || S <- AllInitStates],
+			{States,InitStates,Trans,Accept}
+    end.
+
+%%
+%% (Internal) helper functions
+%%
+is_sat([], _) -> true;
+is_sat([ltrue| Lits], Props) -> is_sat(Lits, Props); %% ???
+is_sat([{lnot, Prop}| Lits], Props) ->
+    not lists:member(Prop, Props) andalso is_sat(Lits, Props);
+is_sat([Prop| Lits], Props) ->
+    lists:member(Prop, Props) andalso is_sat(Lits, Props).
+
+stmap(N, Ns) ->
+    case lists:keysearch(N, 2, Ns) of {value, {N2, N}} -> N2 end.
+
 
 %% Build buichi-digraph
 %% @doc Translate  Büchi automaton into digraph.
 %% @see //stdlib/digraph. digraph
 %% @spec (buchi_automaton()) -> digraph()
-buchi2digraph(B) -> ?BUCHI_IMPL:buchi2digraph(B).
+buchi2digraph(B = {States, _InitStates, Trans, Accept}) ->
+    case is_buchi(B) of
+      false ->
+			erlang:error({not_a_buchi_automaton,B});
+      true ->
+			G = digraph:new([cyclic]),
+			lists:foreach(fun(State) ->
+								  Label = [ initial || lists:member(State,InitStates)] ++
+									  [accepting || lists:member(State,Accept)],
+								  digraph:add_vertex(G,['$v' | State],Label)
+						  end, States),
+			lists:foreach(fun({S1,S2,Label}) ->
+								  digraph:add_edge(G,['$v' | S1],['$v' | S2], Label)
+						  end,Trans),
+			{ok,G}
+    end.
