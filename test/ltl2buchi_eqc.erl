@@ -39,9 +39,11 @@
 %%       prop. vars. have an explicit value.
 -record(witness,{alpha = [], prefix = [], loop = []}).
 
+%%%%%
 %%
 %% Generators
 %%
+%%%%%
 w_timeout(Fun, Arg) ->
     ?LET(X, (elements([Arg])), (Fun(X))).
 
@@ -80,7 +82,7 @@ witness() -> ?LET(Alpha, (alpha()), (witness(Alpha))).
 witness(Alpha) ->
     #witness{alpha  = Alpha,
              prefix = list(label(Alpha)),
-             loop   = list1(label(Alpha))}.
+             loop   = ?SIZED(Size,resize(Size div 2,list1(label(Alpha))))}.
 
 witness_for_buchi(B) ->
     ?LET(Alpha, (alpha()), (witness_for_buchi(Alpha, B))).
@@ -88,7 +90,7 @@ witness_for_buchi(B) ->
 witness_for_buchi(A, B = {_States, InitStates, Trans, Accept}) ->
 	{ok,G} = buchi:buchi2digraph(B),
 	Reachable = digraph_utils:reachable(InitStates,G),
-	Choices = [ {digraph:get_cycle(G,V),digraph:get_path(G,1,V)} || 
+	Choices = [ {digraph:get_cycle(G,V),digraph:get_short_path(G,1,V)} || 
 				  V <- Accept,
 				  lists:member(V,Reachable),
 				  digraph:get_cycle(G,V) /= false],
@@ -107,8 +109,14 @@ witness_for_buchi(A, B = {_States, InitStates, Trans, Accept}) ->
 calc_and_expand_to_alpha(#witness{prefix=Prefix, loop=Loop}) ->
     Alpha = extract_names(lists:flatten(Prefix) ++ lists:flatten(Loop)),
     NewPrefix = expand_labels(Alpha, Prefix),
-    NewLoop = expand_labels(Alpha, Loop),
+    NewLoop = optimize_loop(expand_labels(Alpha, Loop)),	
     #witness{loop=NewLoop, prefix=NewPrefix, alpha=Alpha}.
+
+optimize_loop(Loop) ->
+	case length(lists:usort(Loop)) == 1 of
+		true -> [hd(Loop)];
+		false -> Loop
+	end.	
 
 expand_labels(Alpha, Labels) ->
     lists:map(fun (Label) ->
@@ -126,11 +134,11 @@ extract_names(Label) ->
 %% Generate a buchi automata
 buchi() ->
     ?LET(Bl, (buchi_labeled()),
-         (buchi:lbl2nonlbl(Bl))).
+         (basic_ltl2buchi:lbl2nonlbl(Bl))).
 
 buchi(Alpha) ->
     ?LET(Bl, (buchi_labeled(Alpha)),
-         (buchi:lbl2nonlbl(Bl))).
+         (basic_ltl2buchi:lbl2nonlbl(Bl))).
 
 buchi_labeled() ->
     ?SIZED(Size,
@@ -139,7 +147,7 @@ buchi_labeled() ->
 buchi_labeled(Alpha) ->
     ?SIZED(Size, (buchi_labeled(Size, Alpha))).
 
-buchi_labeled(0, _Alpha) -> buchi:empty_labeled_buchi();
+buchi_labeled(0, _Alpha) -> {[],[],[],[]};
 buchi_labeled(Size, Alpha) ->
     ?LET(NStates, (choose(1, Size)),
          begin
@@ -169,10 +177,6 @@ ltl_formula() ->
 ltl_formula(Alpha) ->
     ?SIZED(Size, (ltl_formula(Size, Alpha))).
 
-%% ltl_formula(0,Alpha) ->
-%%  oneof([{lprop,elements(Alpha)},
-%%         ltrue,
-%%         lfalse]);
 ltl_formula(0, Alpha) ->
     elements(Alpha);
 ltl_formula(Size, Alpha) ->
@@ -191,51 +195,56 @@ negate(ltrue) ->   [lfalse];
 negate(lfalse) ->  [ltrue];
 negate(_Phi) ->       [].
 
+
+%% Listing the different translations
 translations() ->
     [{"basic              ", fun basic_ltl2buchi:translate/1},
-	 %% {"basic_red          ",
-	 %% fun (Phi) -> buchi_reduce:reduce(buchi:ltl2buchi_basic(Phi)) end},
-     %%      {"basic_red3         ",
-     %%       fun (Phi) -> buchi:reduce3(buchi:ltl2buchi_basic(Phi)) end},
-     %%      {"basic_red _rew     ",
-     %%       fun (Phi) -> buchi:reduce(buchi:ltl2buchi_basic(ltl:ltl_rewrite(Phi))) end},
-     %%      {"basic_red3_rew     ",
-     %%       fun (Phi) -> buchi:reduce3(buchi:ltl2buchi_basic(ltl:ltl_rewrite(Phi))) end},
-     %%      {"simple             ", fun buchi:ltl2buchi_simple/1},
-     %%      {"simple_red         ",
-     %%       fun (Phi) -> buchi:reduce(buchi:ltl2buchi_simple(Phi)) end},
-     %%      {"simple_red3        ",
-     %%       fun (Phi) -> buchi:reduce3(buchi:ltl2buchi_simple(Phi)) end},
-     %%      {"simple_red _rew    ",
-     %%       fun (Phi) -> buchi:reduce(buchi:ltl2buchi_simple(ltl:ltl_rewrite(Phi))) end},
-     %%      {"simple_red3_rew    ",
-     %%       fun (Phi) -> buchi:reduce3(buchi:ltl2buchi_simple(ltl:ltl_rewrite(Phi))) end},
-     {"ltl2buchi          ", fun ltl2buchi:translate_norew/1},
-     {"ltl2buchi_rew      ", fun ltl2buchi:translate/1}
-     %%      {"ltl2buchi_rew      ",
-     %%       fun (Phi) -> ltl2buchi:translate(ltl:ltl_rewrite(Phi)) end},
-     %%      {"ltl2buchi_red      ",
-     %%       fun (Phi) -> buchi:reduce(ltl2buchi:translate(Phi)) end},
-     %%      {"ltl2buchi_red3     ",
-     %%       fun (Phi) -> buchi:reduce3(ltl2buchi:translate(Phi)) end},
-     %%      {"ltl2buchi          ",
-     %%       fun (Phi) -> buchi:reduce(ltl2buchi:translate(ltl:ltl_rewrite(Phi))) end},
-     %%      {"ltl2buchi_red2_rew ",
-     %%       fun (Phi) -> buchi:reduce2(ltl2buchi:translate(ltl:ltl_rewrite(Phi))) end},
-     %%      {"ltl2buchi_red3_rew ",
-     %%       fun (Phi) -> buchi:reduce3(ltl2buchi:translate(ltl:ltl_rewrite(Phi))) end}
-     , {"wring              ", fun wring_wrap:run/1}
-     , {"java               ", fun ltl2buchi_wrap:run/1}
-    ].
+	 {"basic+reduce       ", fun(L) -> buchi_reduce:reduce(basic_ltl2buchi:translate(L)) end},
+     {"simple             ", fun simple_ltl2buchi:translate/1},
+	 {"simple+reduce      ", fun(L) -> buchi_reduce:reduce(simple_ltl2buchi:translate(L)) end},
+     {"ltl2buchi_norew    ", fun ltl2buchi:translate_norew/1},
+     {"ltl2buchi          ", fun ltl2buchi:translate/1},
+     {"wring              ", fun wring_wrap:run/1},
+     {"java               ", fun ltl2buchi_wrap:run/1}].
 
 ltl2buchi() ->
     elements(translations()).
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
 %%
-%% Properties
+%% Testing the generators
 %%
+%%%%%
+
+%% Test of witness_for_buchi
+prop_witness_for_buchi() ->
+    ?FORALL(
+	   Alpha, alpha(),
+	   ?FORALL(
+		  Buchi, buchi_ne(Alpha),
+		  ?FORALL(
+			 W, witness_for_buchi(Buchi),
+			 case is_witness_buchi(W, Buchi) of
+				 true ->
+					 W#witness.alpha -- Alpha == [];
+				 false ->
+					 true
+			 end))).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+%%
+%% Testing the reference implementations (no crashes etc...)
+%%
+%%%%%
 
 %% Test the wrappers
+%% This one fails occasionally, Wring is buggy!
 prop_wring_wrap() ->
     ?FORALL(
 	   Phi, ltl_formula(),
@@ -257,23 +266,35 @@ prop_ltl2buchi_wrap() ->
 			  true)
 	   end).
 
-%% Test of witness_for_buchi
-prop_witness_for_buchi1() ->
-    ?FORALL(
-	   Alpha, alpha(),
-	   ?FORALL(
-		  Buchi, buchi_ne(Alpha),
-		  ?FORALL(
-			 W, witness_for_buchi(Buchi),
-			 collect(W,
-					 case is_witness_buchi(W, Buchi) of
-						 true ->
-							 W#witness.alpha -- Alpha == [];
-						 false ->
-							 true
-					 end
-					)))).
 
+%% Test ref_impl
+prop_basic_ltl2buchi() ->
+	?FORALL(
+	   Phi, ltl_formula(),
+	   begin
+		   B = basic_ltl2buchi:translate(Phi),
+		   ?WHENFAIL(
+			  io:format("basic_ltl2buchi fails for: ~p\n", [ltl:print_ltl(Phi)]),
+			  buchi_tuple:is_buchi(B))
+	   end).
+
+prop_simple_ltl2buchi() ->
+	?FORALL(
+	   Phi, ltl_formula(),
+	   begin
+		   B = simple_ltl2buchi:translate(Phi),
+		   ?WHENFAIL(
+			  io:format("simple_ltl2buchi fails for: ~p\n", [ltl:print_ltl(Phi)]),
+			  buchi_tuple:is_buchi(B))
+	   end).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+%%
+%% Testing the ltl2buchi module against reference implementations
+%%
+%%%%%
 
 %%% The intersection of the automatas build from Phi and -Phi should be emtpy!
 prop_test1_0() -> 
@@ -304,7 +325,6 @@ prop_test1() ->
 										 [N1, ltl:print_ltl(Phi), N2, ltl:print_ltl({lnot, Phi}),Bu1,Bu2])),
 							  (buchi:is_empty(Bu1Bu2)))
 				end))).
-
 
 
 %% If we have Phi and -Phi, then every witness should be accepted by either
@@ -393,97 +413,38 @@ prop_test3() ->
 									   is_ltl_witness_buchi(W, Bu2)))))
 			 end)))).
 
-%% Properties for checking the reduce-function
-prop_reduce_parts() ->
-    ?FORALL(
-	   A, alpha(),
-	   %%    ?FORALL(B, buchi_ne(A),
-	   ?FORALL(
-		  L, ltl_formula(A),
-		  begin
-			  B = basic_ltl2buchi:translate(L),
-			  B2 = buchi_reduce:remove_unnecessary_trans(B),
-			  B3 = buchi_reduce:remove_non_reachable(B),
-			  B4 = buchi_reduce:reduce_accept(B),
-			  B5 = buchi_reduce:remove_fixed_formula_balls(B),
-			  B6 = buchi_reduce:basic_bisim_red(B),
-			  B7 = buchi_reduce:strong_fair_sim_red(B),
-			  B8 = buchi_reduce:remove_unnecessary_states_simp(B),
-			  B9 = buchi_reduce:reduce(B),
-			  ?ALWAYS(10,
-					  ?FORALL(
-						 W, witness(A),
-						 begin
-							 Bools = [is_ltl_witness_buchi(W,Bx) 
-									  || Bx <- [B,B2,B3,B4,B5,B6,B7,B8,B9]],
-							 ?WHENFAIL(
-								io:format("Results: ~p\n",[Bools]),
-								length(lists:usort(Bools)) == 1)
-						 end))
-                    end)).
 
-prop_check_reduce(F) ->
-    ?FORALL(
-	   A, alpha(),
-       ?FORALL(
-		  B1, buchi(A),
-		  ?FORALL(
-			 W, witness(A),
-			 begin
-				 B2 = F(B1),
-				 ?WHENFAIL(
-					io:format("~p reduced to \n~p\nUsed witness ~p (B1: ~p, B2: ~p)\n",
-							  [B1, B2, W, is_ltl_witness_buchi(W, B1),
-							   is_ltl_witness_buchi(W, B2)]),
-					(is_ltl_witness_buchi(W, B1) ==
-					 is_ltl_witness_buchi(W, B2)))
-			 end))).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-prop_check_reduce2(F) ->
-    ?FORALL(
-	   A, alpha(),
-       ?FORALL(
-		  Phi, ltl_formula(A),
-          ?FORALL(
-			 W, witness(A),
-			 begin
-				 %%            B1 = ltl2buchi:translate(Phi),
-				 B1 = basic_ltl2buchi:translate(Phi),
-				 %%        B2 = buchi:basic_bisim_red(B1),
-				 B2 = F(B1),
-				 %%            B2 = buchi:reduce3(B1),
-				 ?WHENFAIL(
-					io:format("~p reduced to \n~p\nUsed witness ~p (B1: ~p, B2: ~p)\n",
-							  [B1, B2, W, is_ltl_witness_buchi(W, B1),
-							   is_ltl_witness_buchi(W, B2)]),
-					(is_ltl_witness_buchi(W, B1) ==
-					 is_ltl_witness_buchi(W, B2)))
-			 end))).
+%%%%%
+%%
+%% Testing the ltl_parse module
+%%
+%%%%%
 
-prop_check_rewrite() ->
-    ?FORALL(
-	   L,ltl_formula(),
-	   begin
-		   Bu1 = basic_ltl2buchi:translate(L),
-		   Bu2 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(ltl:lnot(L))),
-		   Bu3 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(L)),
-		   Bu4 = basic_ltl2buchi:translate(ltl:lnot(L)),
-		   Bu1Bu2 = buchi:intersection(Bu1, Bu2),
-		   Bu3Bu4 = buchi:intersection(Bu3, Bu4),
-		   ?WHENFAIL(
-			  io:format("Property failed with ~p and ~p\n",
-						[ltl:print_ltl(L), 
-						 ltl:print_ltl({lnot, L})]),
-			  (buchi:is_empty(Bu1Bu2) andalso buchi:is_empty(Bu3Bu4)))
-	   end).
+prop_parse() ->
+	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
+			begin
+				ltl_parse:string(ltl:pp(Ltl,Style)),
+				?WHENFAIL(io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), true)
+			end).
+
+prop_parse2() ->
+	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
+			begin
+				S1 = ltl:pp(Ltl,Style),
+				Ltl2  = ltl_parse:string(S1),
+				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), Ltl == Ltl2)
+			end).
 
 
-%% lbl2nonlbl ?? How to test in a meaningful way?? 
-%% Correct by inspection ;-)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% degeneralized
-%% a degeneralized BA accepts the same witnesses as
-%% the original generalized automata does
+%%%%%
+%%
+%% Testing the buchi module (the intersection function)
+%%
+%%%%%
 
 %% intersection
 %% 1. B1xB2 accepts the same witnesses as B2xB1
@@ -504,44 +465,26 @@ prop_intersection_t1() ->
 						  is_witness_buchi(W, B2B1))))
 		  end)).
 
-prop_intersection_t1_2() ->
-    ?FORALL(
-	   A, alpha(),
-	   ?FORALL(
-		  {B1, B2}, {buchi_ne(A), buchi_ne(A)},
-		  begin
-			  B1B2 = buchi:intersection(B1, B2),
-			  B2B1 = buchi:intersection(B2, B1),
-			  ?ALWAYS(10,
-					  ?FORALL(
-						 W, witness(A),
-						 (collect(is_witness_buchi(W, B1B2),
-								  is_witness_buchi(W, B1B2) ==
-								  is_witness_buchi(W, B2B1)))))
-		  end)).
-
 prop_intersection_t2() ->
     ?FORALL(
 	   A, alpha(),
 	   ?FORALL(
 		  {B1, B2}, {buchi_ne(A), buchi_ne(A)},
-		  begin
-			  B1B2 = buchi:intersection(B1, B2),
-			  ?FORALL(
-				 W, witness_for_buchi(A, B1),
-				 ?IMPLIES(
-					is_witness_buchi(W, B1),
-					begin
-						IWB2 = is_witness_buchi(W, B2),
-						measure(len_witness, length(W#witness.prefix) + length(W#witness.loop),
-								collect(IWB2,
-										?WHENFAIL(
-										   io:format("~p and ~p == ~p\nB1B2: ~p\n",
-													 [is_witness_buchi(W, B1), is_witness_buchi(W, B2),
-													  is_witness_buchi(W, B1B2), B1B2]),
-										   (IWB2 == is_witness_buchi(W, B1B2)))))
-					end))
-		  end)).
+		  ?FORALL(
+			 W, witness_for_buchi(A, B1),
+			 ?IMPLIES(
+				is_witness_buchi(W, B1),
+				begin
+					B1B2 = buchi:intersection(B1, B2),
+					IWB2 = is_witness_buchi(W, B2),
+					measure(len_witness, length(W#witness.prefix) + length(W#witness.loop),
+							collect(IWB2,
+									?WHENFAIL(
+									   io:format("~p and ~p == ~p\nB1B2: ~p\n",
+												 [is_witness_buchi(W, B1), is_witness_buchi(W, B2),
+												  is_witness_buchi(W, B1B2), B1B2]),
+									   (IWB2 == is_witness_buchi(W, B1B2)))))
+				end)))).
 
 prop_intersection_t3() ->
     ?FORALL(
@@ -551,20 +494,121 @@ prop_intersection_t3() ->
 		  begin
 			  B1B2 = buchi:intersection(B1, B2),
 			  ?FORALL(
-				 W, witness_for_buchi(A, B1B2),
-				 ?IMPLIES(is_witness_buchi(W, B1B2),
-						  measure(len_witness, length(W#witness.prefix) + length(W#witness.loop),
-								  is_witness_buchi(W, B2) andalso
-								  is_witness_buchi(W, B1))))
+				 W, timeout(1000,witness_for_buchi(A, B1B2)),
+				 begin
+					 IWB1B2 = timeout_fun(500,{?MODULE,is_witness_buchi,[W,B1B2]}),
+					 IWB1 = timeout_fun(500,{?MODULE,is_witness_buchi,[W,B1]}),
+					 IWB2 = timeout_fun(500,{?MODULE,is_witness_buchi,[W,B2]}),
+					 collect(IWB1B2,
+							 measure(len_witness, length(W#witness.prefix) + length(W#witness.loop),
+									 case IWB1B2 of
+										 true -> IWB1 andalso IWB2;
+										 false -> (not IWB1) orelse (not IWB2);
+										 timeout -> true
+									 end))
+				 end)
 		  end)).
 
-%% A property to check the ltl_rewrite 
-prop_ltlrewrite() ->
+
+timeout_fun(T,{M,F,A}) ->
+	Ref = make_ref(), Self = self(),
+	spawn(fun() ->
+				  Res = apply(M,F,A),
+				  Self ! {Ref,Res}
+		  end),
+	receive {Ref,Res} ->
+			Res
+	after T ->
+			timeout
+	end.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+%%
+%% Testing ltl_rewrite module
+%%
+%%%%%
+
+prop_check_rewrite() ->
+    ?FORALL(
+	   L,ltl_formula(),
+	   begin
+		   Bu1 = basic_ltl2buchi:translate(L),
+		   Bu2 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(ltl:lnot(L))),
+		   Bu3 = basic_ltl2buchi:translate(ltl_rewrite:rewrite(L)),
+		   Bu4 = basic_ltl2buchi:translate(ltl:lnot(L)),
+		   Bu1Bu2 = buchi:intersection(Bu1, Bu2),
+		   Bu3Bu4 = buchi:intersection(Bu3, Bu4),
+		   ?WHENFAIL(
+			  io:format("ltl_rewrite:rewrite failed with ~p and ~p\n",
+						[ltl:print_ltl(L), 
+						 ltl:print_ltl({lnot, L})]),
+			  (buchi:is_empty(Bu1Bu2) == buchi:is_empty(Bu3Bu4)))
+	   end).
+
+prop_check_rewrite2() ->
     ?FORALL(
 	   Alpha, alpha(),
 	   ?FORALL({Phi, W}, {ltl_formula(Alpha), witness(Alpha)},
-			   (is_witness_ltl(W, Phi) ==
-				is_witness_ltl(W, ltl_rewrite:rewrite(Phi))))).
+			   ?WHENFAIL(io:format("ltl_rewrite:rewrite fails for ~p ==> ~p\n",
+								   [ltl:print(Phi),ltl:print(ltl_rewrite:rewrite(Phi))]),
+						 (is_witness_ltl(W, Phi) ==
+						  is_witness_ltl(W, ltl_rewrite:rewrite(Phi))))
+			  )).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+%%
+%% Testing buchi_reduce module
+%%
+%%%%%
+
+%% Individual reduce functions
+reduce_functions() ->
+	[{"remove_unnecessary_trans      ", fun  buchi_reduce:remove_unnecessary_trans/1},
+	 {"remove_non_reachable          ", fun buchi_reduce:remove_non_reachable/1},
+	 {"reduce_accept                 ", fun buchi_reduce:reduce_accept/1},
+	 {"remove_fixed_formula_balls    ", fun buchi_reduce:remove_fixed_formula_balls/1},
+	 {"basic_bisim_red               ", fun buchi_reduce:basic_bisim_red/1},
+	 {"strong_fair_sim_red           ", fun buchi_reduce:strong_fair_sim_red/1},
+	 {"remove_unnecessary_states_simp", fun buchi_reduce:remove_unnecessary_states_simp/1}].
+
+%% Checking the individual reduce-functions
+prop_check_reduce_ind() ->
+	?ALWAYS(10,
+			?FORALL({N,F},noshrink(elements(reduce_functions())),
+					prop_check_reduce(N,F))).
+
+%% Check the top-level reduce
+prop_check_reduce() ->
+	prop_check_reduce("reduce",fun buchi_reduce:reduce/1).
+
+prop_check_reduce(N,F) ->
+	?FORALL(
+	   A,alpha(),
+	   ?FORALL(
+		  B1, oneof([buchi(A)
+					 %%,?LET(L,ltl_formula(A),basic_ltl2buchi:translate(L))
+					]),
+		  ?FORALL(
+			 {W1,W2},{witness(A),witness_for_buchi(A,B1)},
+			 begin
+				 B2 = F(B1),
+				 IW1B1 = is_ltl_witness_buchi(W1,B1),
+				 IW1B2 = is_ltl_witness_buchi(W1,B2),
+				 IW2B1 = is_ltl_witness_buchi(W2,B1),
+				 IW2B2 = is_ltl_witness_buchi(W2,B2),
+				 ?WHENFAIL(io:format("Reduce ~p failed:\n   ~p == ~p && ~p == ~p\n" ++
+									 "  B1: ~p\n  B2: ~p\n",
+									 [N,IW1B1,IW1B2,IW2B1,IW2B2,B1,B2]),
+						   IW1B1 == IW1B2 andalso IW2B1 == IW2B2)
+			 end))).		  
+
 
 %% Some props to check the reduce_group function, it simplifies
 %% a set of transition lables...
@@ -575,7 +619,7 @@ prop_reduce_group() ->
 		  Group, (list1(literals(Alpha))),
 		  begin
 			  Group1 = lists:usort(Group),
-			  Group2 = buchi:reduce_group(Group1),
+			  Group2 = buchi_reduce:reduce_group(Group1),
 			  ?FORALL(
 				 Test, (label(Alpha)),
 				 ?WHENFAIL(
@@ -593,6 +637,16 @@ tr_match(Test,[Tr | Trs]) ->
         [] -> true;
         _ -> tr_match(Test,Trs)
     end.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
+%%
+%% Using QuickCheck to optimize and evaluate size
+%%
+%%%%%
 
 %% Size optimization properties...
 prop_compare_size() ->
@@ -631,6 +685,7 @@ prop_discover_diffsize() ->
 	   end).
 
 prop_discover_diffsize2() ->
+	fails(
     ?FORALL(
 	   Phi, (ltl_formula()),
 	   begin
@@ -643,31 +698,71 @@ prop_discover_diffsize2() ->
 						[ltl:pp(Phi, normal), B1, 
 						 buchi_utils:size_of(B1), buchi_utils:size_of(B2), B2]),
 			  buchi_utils:size_of(B2) + 3 > buchi_utils:size_of(B1))
-	   end).
+	   end)).
 
 
-%%%
-%% Testing the parser
-%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-prop_parse() ->
-	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
-			begin
-				ltl_parse:string(ltl:pp(Ltl,Style)),
-				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), true)
+%%%%%
+%%
+%% Testing buchi_utils module
+%%
+%%%%%
+
+%% Reference implementations using digraph
+ref_cycles(B) ->
+ 	{ok,G} = buchi:buchi2digraph(B),
+ 	Cycles = digraph_utils:cyclic_strong_components(G),
+ 	digraph:delete(G),
+ 	Cycles.
+	
+ref_strong_components(B) ->
+ 	{ok,G} = buchi:buchi2digraph(B),
+ 	Scc = digraph_utils:strong_components(G),
+ 	digraph:delete(G),
+ 	Scc.
+
+ref_reachable(B = {_,IS,_,_}) ->
+ 	{ok,G} = buchi:buchi2digraph(B),
+ 	Reach = digraph_utils:reachable(IS,G),
+ 	digraph:delete(G),
+ 	Reach.
+
+prop_buchi_utils_reachable() ->
+	?FORALL(B, buchi(),
+			begin 
+				Reach1 = lists:usort(buchi_utils:reachable(B)),
+				Reach2 = lists:usort(ref_reachable(B)),
+				?WHENFAIL(io:format("buchi_utils:reachable fails:\n  Reach1: ~p\nReach2: ~p\n",
+									[Reach1,Reach2]),
+						  Reach1 == Reach2)
 			end).
 
-prop_parse2() ->
-	?FORALL({Ltl,Style}, {ltl_formula(),elements([normal,java,wring])},
+prop_buchi_utils_scc() ->
+	?FORALL(B, buchi(),
 			begin
-				S1 = ltl:pp(Ltl,Style),
-				Ltl2  = ltl_parse:string(S1),
-				?WHENFAIL( io:format("Formula: ~s\n",[ltl:pp(Ltl,Style)]), Ltl == Ltl2)
+				Scc1 = lists:usort(lists:map(fun(Scc) -> lists:usort(Scc) end,
+											 buchi_utils:strong_components(B))),
+				Scc2 = lists:usort(lists:map(fun(Scc) -> lists:usort(Scc) end,
+											 ref_strong_components(B))),
+				?WHENFAIL(io:format("Scc1: ~p\nScc2: ~p\n",[Scc1,Scc2]),Scc1 == Scc2)
 			end).
 
+prop_buchi_utils_cycles() ->
+	?FORALL(B, buchi(),
+			begin
+				Scc1 = lists:usort(lists:map(fun(Scc) -> lists:usort(Scc) end,buchi_utils:cycles(B))),
+				Scc2 = lists:usort(lists:map(fun(Scc) -> lists:usort(Scc) end,ref_cycles(B))),
+				?WHENFAIL(io:format("CScc1: ~p\nCScc2: ~p\n",[Scc1,Scc2]),Scc1 == Scc2)
+			end).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%
 %%
-%% Functions
+%% Helper functions
 %%
+%%%%%
 
 is_witness_buchi(W,B) ->
     WB = witness2buchi(W),
@@ -703,23 +798,6 @@ find_tr(X,Y,[{X,Y,St} | _Tr]) ->
                  end,St);
 find_tr(X,Y,[_ | Tr]) ->
     find_tr(X,Y,Tr).
-
-%% spawned_buchi2digraph(B = {_States,InitStates,_Trans,Accept}) ->
-%%     %% Running out of ets-tables...
-%%     Self = self(),
-%%     spawn(fun() ->
-%%                   {ok,G} = buchi:buchi2digraph(B),
-%%                   Reachable = digraph_utils:reachable(InitStates,G),
-%%                   Choices = [ {digraph:get_cycle(G,V),digraph:get_path(G,1,V)} || 
-%%                                 V <- Accept,
-%%                                 lists:member(V,Reachable),
-%%                                 digraph:get_cycle(G,V) /= false],
-%%                   digraph:delete(G),
-%%                   Self ! Choices
-%%           end),
-%%     receive
-%%         X -> X
-%%     end.
 
 remove_release({release,Phi1,Phi2}) ->
     {lnot,{until,
