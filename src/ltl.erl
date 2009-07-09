@@ -202,7 +202,7 @@ pp(F) ->
 %% format.
 %% @spec (ltl_formula(),ltl_print_format()) -> ltl_formula()
 pp({lprop, X}, S) ->
-    pp_lprop(io_lib:format("~p",[X]), S);
+    pp_lprop(lists:flatten(io_lib:format("~p",[X])), S);
 pp({lor, Phi1, Phi2}, S) ->
     format_expr1(Phi1, S, lor) ++ format_expr2(Phi2, S, lor);
 pp({land, Phi1, Phi2}, S) ->
