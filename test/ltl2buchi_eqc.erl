@@ -509,6 +509,20 @@ prop_intersection_t3() ->
 				 end)
 		  end)).
 
+%% Check the ltl_intersection and is_witness_ltl functions
+prop_ltl_intersection() ->
+	?FORALL(
+	   A,alpha(),
+	   ?FORALL(
+		  L, ltl_formula(A),
+		  begin
+			  B = basic_ltl2buchi:translate(L),
+			  ?FORALL(
+				 W,witness_for_buchi(A,B),
+				 ?WHENFAIL(io:format("ltl_intersection fails: ~p /= ~p\n",
+									 [is_ltl_witness_buchi(W,B),is_witness_ltl(W,L)]),
+						   is_ltl_witness_buchi(W,B) == is_witness_ltl(W,L)))
+			 end)).
 
 timeout_fun(T,{M,F,A}) ->
 	Ref = make_ref(), Self = self(),
