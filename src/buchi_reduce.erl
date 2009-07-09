@@ -46,7 +46,11 @@
 		 basic_bisim_red/1,
 		 strong_fair_sim_red/1]).
 
--export([expand_accept/1, remove_unnecessary_states/1]).
+%%Exports for testing
+-export([expand_accept/1,
+		 reduce_group/1
+		%% , remove_unnecessary_states/1
+		]).
 
 %% @doc Reductions and optimization of Büchi-automaton
 %% @spec  (buchi_automaton()) -> buchi_automaton()
@@ -172,48 +176,35 @@ remove_non_reachable(B = {States,InitStates,Trans,_Accept}) ->
 %% Reduce the number of accepting states (not necessarily a good thing!?)
 %% @private
 reduce_accept(B = {States,InitStates,Trans,Accept}) ->
-	{ok,G} = buchi2digraph(B),
-	InCycle = lists:flatten(digraph_utils:cyclic_strong_components(G)),
+	InCycle = lists:flatten(buchi_utils:cycles(B)),
 	NotInCycle = Accept -- InCycle,
-	digraph:delete(G),
 	{States,InitStates,Trans,Accept -- NotInCycle}.
 
 expand_accept(B = {States,InitStates,Trans,Accept}) ->
-	{ok,G} = buchi2digraph(B),
-	InCycle = lists:flatten(digraph_utils:cyclic_strong_components(G)),
+	InCycle = lists:flatten(buchi:cycles(B)),
 	NotInCycle = (States -- InCycle) -- Accept,
 	AddAccept = [S || S <- NotInCycle,
-					  accepts(G,digraph:out_edges(G,S),Accept)],
-%% 	io:format("InCycle: ~p\nNotInCycle: ~p\nAddAcc: ~p\n",
-%% 			  [InCycle, NotInCycle, AddAccept]),
-	digraph:delete(G),
+					  accepts([S2 || {S1,S2,_} <- Trans, S1 == S],Accept)],
 	{States,InitStates,Trans,Accept ++ AddAccept}.
 
-accepts(_,[],_) ->
+accepts([],_) ->
 	false;
-accepts(G,[Edge],Accept) ->
-%% 	io:format("Accepts: ~p ~p ~p\n",[G,Edge,Accept]),
-	accepts0(digraph:edge(G,Edge),Accept);
-accepts(G,[Edge | Edges],Accept) ->
-	accepts0(digraph:edge(G,Edge),Accept) andalso
-    accepts(G,Edges,Accept).
-
-accepts0({_,_V1,V2,_},Accept) ->
-	lists:member(V2,Accept).
-
+accepts([S],Accept) ->
+	lists:member(S,Accept);
+accepts([S | Ss],Accept) ->
+	lists:member(S,Accept) andalso
+    accepts(Ss,Accept).
 
 %% Remove states that can never lead to an accepting state
 %% @private
-remove_never_accept(B = {States,_InitStates,_Trans,Accept}) ->
-	{ok,G} = buchi2digraph(B),
+remove_never_accept(B = {States,_InitStates,Trans,Accept}) ->
 	%Strongly connected components containing an accepting state
 	SCs = lists:filter(fun(SC) ->
 							   SC -- Accept /= SC
-					   end,digraph_utils:cyclic_strong_components(G)),
+					   end,buchi_utils:cycles(B)),
 	RemCands = States -- lists:flatten(SCs),
 	Rem = [ S || S <- RemCands,
-				 not reaches_accept(digraph_utils:reachable([S],G),SCs)],
-	digraph:delete(G),
+				 not reaches_accept(buchi_utils:reachable(Trans,[S]),SCs)],
 	remove(Rem,B).
 
 reaches_accept(_Reachable,[]) ->
@@ -223,7 +214,6 @@ reaches_accept(Reachable,[SC | SCs]) ->
 		true -> true;
 		false -> reaches_accept(Reachable,SCs)
 	end.
-
 
 %% Remove unnecessary states
 %% This one is dubious...
@@ -253,8 +243,7 @@ remove_unnecessary_states_simp({States,InitStates,Trans,Accept}) ->
 	
 
 remove_unnecessary_states(B = {States,InitStates,Trans,Accept}) ->
-	{ok,G} = buchi2digraph(B),
-	InCycle = lists:flatten(digraph_utils:cyclic_strong_components(G)),
+	InCycle = lists:flatten(buchi_utils:cycles(B)),
 	NotInCycle = (States -- InCycle),
  	Candidates = [ S || S <- NotInCycle -- Accept,
  						length([T || T = {S1,_,_} <- Trans, S1 == S]) == 1],
@@ -274,33 +263,32 @@ remove_unnecessary_states(B = {States,InitStates,Trans,Accept}) ->
  					 undefined -> S;
  					 Val -> Val 
  				 end || S <- InitStates],
-	digraph:delete(G),
  	remove([S || {S,_} <- OkOnes],{States,NewInit,NewTrans,Accept}).
 
 %%%
 %% Reduce fixed formula balls
 %%%
 %% @private
-remove_fixed_formula_balls(B = {_States,_InitStates,Trans,_Accept}) ->
-	{ok,G} = buchi2digraph(B),
+remove_fixed_formula_balls(B = {_States,_InitStates,Trans,Accept}) ->
 	SCs = lists:filter(
-			fun({_,_}) -> true; (_) -> false end,
+			fun({_,_,_}) -> true; (_) -> false end,
 			lists:map(fun(X) ->
-							  is_fixed_formula_ball(X,Trans)
+							  is_fixed_formula_ball(X,Trans,Accept)
 					  end,
-					  digraph_utils:cyclic_strong_components(G))),
-	digraph:delete(G),
+					  buchi_utils:cycles(B))),
 	collapse_balls(SCs,B).
 
-is_fixed_formula_ball([_X],_Trans) -> false;
-is_fixed_formula_ball(SC,Trans) ->
+is_fixed_formula_ball([_X],_Trans,_) -> false;
+is_fixed_formula_ball(SC,Trans,Accept) ->
 	case is_ball(SC,Trans) of
 		true ->
 			Lbls = lists:usort([ St || {S1,S2,St} <- Trans,
 									   lists:member(S1,SC),
 									   lists:member(S2,SC)]),
+			Accepting = lists:any(fun(X) -> X end,
+								  lists:map(fun(X) -> lists:member(X,Accept) end,SC)),
 			case Lbls of
-				[X] -> {SC,X};
+				[X] -> {SC,X,Accepting};
 				_ -> false
 			end;
 		false -> false
@@ -315,7 +303,7 @@ collapse_balls([],B) -> B;
 collapse_balls(SCs,{States,InitStates,Trans,Accept}) ->
 	InTrans = 
 		lists:map(
-		  fun({SC,_}) ->
+		  fun({SC,_,_}) ->
 				  [ {S1,St} || {S1,S2,St} <- Trans, 
 							   lists:member(S2,SC),
 							   not lists:member(S1,SC)]
@@ -323,20 +311,21 @@ collapse_balls(SCs,{States,InitStates,Trans,Accept}) ->
 	NewStates = lists:seq(length(States) + 1,
 						  length(States) + length(SCs)),
 	NewTrans = lists:flatmap(
-				 fun({NS,{_SC,Lbl},InTrs}) ->
+				 fun({NS,{_SC,Lbl,_},InTrs}) ->
 						 [{NS,NS,Lbl}] ++ [{S1,NS,St} || {S1,St} <- InTrs]
 				 end,lists:zip3(NewStates,SCs,InTrans)),
-	NewInitStates = lists:foldl(fun({NS,{SC,_}},InitS) ->
+	NewInitStates = lists:foldl(fun({NS,{SC,_,_}},InitS) ->
 										case (InitS -- SC) /= InitS of
 											true -> InitS ++ [NS];
 											false -> InitS
 										end
 								end,InitStates,lists:zip(NewStates,SCs)),
+	NewAccept = [ S || {S,{_,_,true}} <- lists:zip(NewStates,SCs) ],
 	Rem = lists:flatten([SC || {SC,_} <- SCs]),
 	_B = remove(Rem,{States ++ NewStates,
 					NewInitStates,
 					Trans ++ NewTrans, 
-					Accept ++ NewStates}).
+					Accept ++ NewAccept}).
 							 
 
 %%%
