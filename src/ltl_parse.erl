@@ -33,6 +33,26 @@
 %% ltl_parser.yrl. Can be extended and/or replaced to suit special needs
 %% for an example of this, see <A
 %% HREF="https://babel.ls.fi.upm.es/trac/McErlang/">McErlang</A>
+%%
+%% ===Examples===
+%% <pre>
+%% 8&#62; ltl_parse:string("G p").
+%% {always,{lprop,p}}
+%%
+%% 9&#62; ltl_parse:string("[] p").
+%% {always,{lprop,p}}
+%%
+%% 10&#62; ltl_parse:string("F (p | q)").
+%% {eventually,{lor,{lprop,p},{lprop,q}}}
+%%
+%% 11&#62; ltl_parse:string("&#60;&#62; (p | q)").
+%% {eventually,{lor,{lprop,p},{lprop,q}}}
+%%
+%% 12&#62; ltl_parse:string("&#60;&#62; (p | X q)").
+%% {eventually,{lor,{lprop,p},{next,{lprop,q}}}}
+%% </pre>
+%% @end
+
 -module(ltl_parse).
 -export([string/1]).
 

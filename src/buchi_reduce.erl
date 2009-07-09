@@ -31,6 +31,7 @@
 %% of various reduction techniques for Büchi automata.
 %%
 %% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
+%% (See <A HREF="buchi.html"><code>buchi</code></A> for data type definition.)
 %% @todo Export a more general reduce (with options!?)
 
 -module(buchi_reduce).

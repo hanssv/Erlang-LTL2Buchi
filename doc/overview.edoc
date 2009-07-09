@@ -25,7 +25,25 @@ size. The representation of Büchi automata is described in <A
 HREF="buchi.html"><code>buchi</code></A>.
 
 ===Examples===
-<B>TO BE INSERTED</B>
+<pre>
+3> ltl2buchi:translate(ltl:always(ltl:prop(p))).
+{[1],[1],[{1,1,[{lprop,p}]}],[1]}
+
+4> ltl2buchi:translate(ltl:eventually(ltl:lor(ltl:prop(p),ltl:prop(q)))).
+{[1,2],
+ [2],
+ [{1,1,[]},{2,1,[{lprop,p}]},{2,1,[{lprop,q}]},{2,2,[]}],
+ [1]}
+
+5> ltl2buchi:translate(ltl_parse:string("G p")).                         
+{[1],[1],[{1,1,[{lprop,p}]}],[1]}
+
+6> ltl2buchi:translate(ltl_parse:string("F (p | q)")).
+{[1,2],
+ [2],
+ [{1,1,[]},{2,1,[{lprop,p}]},{2,1,[{lprop,q}]},{2,2,[]}],
+ [1]}
+</pre>
 
 ==Background==
 

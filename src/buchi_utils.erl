@@ -27,9 +27,10 @@
 %% @author Hans Svensson <hanssv@chalmers.se>
 %% @copyright 2009, Hans Svensson
 %% @doc Module containing utility functions for Büchi automata
+%% @see buchi
 %%
 %% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
-
+%% (See <A HREF="buchi.html"><code>buchi</code></A> for data type definition.)
 -module(buchi_utils).
 
 -export([size_of/1, 

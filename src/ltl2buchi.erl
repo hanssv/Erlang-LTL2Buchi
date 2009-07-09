@@ -35,7 +35,7 @@
 %% LTL formulae to Büchi automata</a> by Giannakopoulou and Lerda.
 %%
 %% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
-%% @todo Use digraphs for representing Büchi automata.
+%% (See <A HREF="buchi.html"><code>buchi</code></A> for data type definition.)
 
 -module(ltl2buchi).
 

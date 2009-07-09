@@ -28,7 +28,14 @@
 %% @copyright 2009, Hans Svensson
 %% @doc Module defining (non-labeled and non-generalized) Büchi automata
 %%
-%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.
+%% @type buchi_automaton(). A tuple structure representing a Büchi automaton.<br/>
+%% <code>B :: buchi_automaton() == 
+%% <br/>&#160;&#160;       {States :: [state()],
+%% <br/>&#160;&#160;&#160;  InitialStates :: [state()],
+%% <br/>&#160;&#160;&#160;  Transitions :: [{state(),state(),label()}],
+%% <br/>&#160;&#160;&#160;  AcceptingStates :: [state()]}</code>,<br/>
+%% where <code>label()</code> is a list of propositions, see <A HREF="ltl.html">
+%% <code>ltl</code></A>.
 
 -module(buchi).
 
