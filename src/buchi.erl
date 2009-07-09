@@ -54,7 +54,7 @@ is_buchi(_) -> false.
 
 %% @doc The empty Büchi automaton.
 %% @spec () -> buchi_automaton()
-empty_buchi() -> {[1],[1],[],[]}.
+empty_buchi() -> {[],[],[],[]}.
 
 %% Empty check
 %% @doc Check Büchi automaton for emptiness.
@@ -67,12 +67,10 @@ is_empty(B = {_States,_InitStates,_Trans,_Accept}) ->
 
 %% @private
 reachable_loop_states(B = {_States,InitStates,_Trans,Accept}) ->
-    {ok,G} = buchi2digraph(B),
-    Reachable = digraph_utils:reachable(InitStates,G),
+    Reachable = buchi_utils:reachable(B),
     Res = [ V || V <- Accept,
 				 lists:member(V,Reachable),
-				 digraph:get_cycle(G,V) /= false],
-	digraph:delete(G),
+				 buchi_utils:in_cycle(B,V)],
 	Res.
 
 
@@ -207,19 +205,19 @@ stmap(N, Ns) ->
 %% @doc Translate  Büchi automaton into digraph.
 %% @see //stdlib/digraph. digraph
 %% @spec (buchi_automaton()) -> digraph()
-buchi2digraph(B = {States, _InitStates, Trans, Accept}) ->
+buchi2digraph(B = {States, InitStates, Trans, Accept}) ->
     case is_buchi(B) of
       false ->
 			erlang:error({not_a_buchi_automaton,B});
       true ->
 			G = digraph:new([cyclic]),
-			lists:foreach(fun(State) ->
-								  Label = [ initial || lists:member(State,InitStates)] ++
-									  [accepting || lists:member(State,Accept)],
-								  digraph:add_vertex(G,['$v' | State],Label)
+			lists:foreach(fun(S) ->
+								  Label = [ initial || lists:member(S,InitStates)] ++
+									  [accepting || lists:member(S,Accept)],
+								  digraph:add_vertex(G,S,Label)
 						  end, States),
 			lists:foreach(fun({S1,S2,Label}) ->
-								  digraph:add_edge(G,['$v' | S1],['$v' | S2], Label)
+								  digraph:add_edge(G,S1,S2, Label)
 						  end,Trans),
 			{ok,G}
     end.
