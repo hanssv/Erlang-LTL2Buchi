@@ -1,4 +1,6 @@
 EMAKE = erl -make
+ERL_LIB = /usr/lib/erlang/lib
+VERSION = 1.0
 
 default: tool
 
@@ -18,11 +20,15 @@ tests:
 	cd test; $(EMAKE)
 
 tests_clean:
-	cd ebin; rm -f ltl2buchi_eqc.beam ltl2buchi_wrap.beam wring_wrap.beam
+	cd ebin; rm -f ltl2buchi_eqc.beam ltl2buchi_wrap.beam wring_wrap.beam \
+	modella_ltl2buchi.beam basic_ltl2buchi.beam simple_ltl2buchi.beam
 
 doc: tool 
 	echo "Building documentation in ./edoc"
 	erl -noshell -eval "edoc:application('ltl2buchi',\".\",[{exclude_packages,[ltl_parser]}])" -s init stop 
-#	cp doc/overview-summary.html /tmp/tmp.html
 	@cd doc; iconv -f LATIN1 -t UTF8 overview-summary.html > tmp; mv tmp overview-summary.html
 	@cd doc; sed -e 's/Ã¼/ü/g' overview-summary.html > tmp; mv tmp overview-summary.html
+
+install: tool tests_clean
+	mkdir -p $(ERL_LIB)/ltl2buchi-$(VERSION)
+	cp -r ebin doc src $(ERL_LIB)/ltl2buchi-$(VERSION)

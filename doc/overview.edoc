@@ -1,6 +1,6 @@
 @author Hans Svensson <hanssv@chalmers.se>
 @copyright 2009 Hans Svensson
-@version 0.9
+@version 1.0
 @title LTL-to-Büchi translator
 
 @doc <EM>The main component of this package is an Erlang implementation of
