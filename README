@@ -20,11 +20,20 @@ Installation
 To permanently install, check the Makefile and ensure that your your
 erlang/lib directory (the standard place for it is
 /usr/lib/erlang/lib) is defined correctly in the ERL_LIB
-variable. Then a 'sudo make install' should do the trick.
+variable. Then a 'sudo make install' should do the trick. NOTE: The
+tests and the reference implementations for the tests are *not*
+installed.
+
+Documentation
+
+The usage and the technical details are described in the (EDOC)
+documentation, build the documentation using 'make doc', and it is
+located in the 'doc' directory.
 
 Tests
 
 The repository includes a 'test' direcotory containing QuickCheck
 properties and reference implementations, see test/README for details
-of running the tests.
+of running the tests. The tests and the reference implementations are
+built by 'make tests'.
 
